@@ -135,8 +135,29 @@
   border: 1px dashed #222222;
 }
 .placeholder-draggable {
-  border: 1px dashed #000;
-  background: rgba(0, 0, 0, 0.2);
+  min-height: 46px;
+  line-height: 46px;
+  cursor: pointer;
+  display: block;
+  margin: 10px;
+  border: 1px solid #e8e8e8;
+  background: rgba(0, 0, 0, 0.07);
+  -webkit-border-radius: 5px;
+  -moz-border-radius: 5px;
+  border-radius: 5px;
+  border-style: dashed;
+  border-width: 2px;
+  background: #FAFAFA;
+}
+.placeholder-draggable:hover {
+  background: #fafafa;
+}
+.placeholder-draggable > .media > span.fa.pull-left {
+  margin-top: 10px;
+  margin-left: 10px;
+}
+.placeholder-draggable[class*="col-"] {
+  margin: 0;
 }
 .ui-highlight-drops {
   border: 1px solid rgba(0, 128, 0, 0.4) !important;

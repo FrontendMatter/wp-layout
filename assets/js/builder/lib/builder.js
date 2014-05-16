@@ -92,11 +92,22 @@
         var builder = this;
         this.$('#gallery-components').on('click', '.bcomponent', function(e)
         {
-            var c = builder.overlay.is(':visible') ?
-                builder.getOverlayAttachment() :
-                builder.container;
+            var a = builder.getOverlayAttachment(),
+                o = builder.getOptions(a),
+                c = builder.overlay.is(':visible') ? a : builder.container,
+                e = builder.$(this).clone();
 
-            builder.$(c).prepend(builder.$(this).clone());
+            if (a.is('[data-component]'))
+            {
+                if ((o && typeof o.type != 'template') || !o)
+                {
+                    builder.$(c).after(e);
+                    builder.applyComponent();
+                    return;
+                }
+            }
+
+            builder.$(c).prepend(e);
             builder.applyComponent();
         });
     };
@@ -259,25 +270,27 @@
             // refreshPositions: true,
             helper: function()
             {
-                var c = builder.getOverlayAttachment().clone();
-                return c.width(c.width());
+                var t = builder.getOverlayAttachment(),
+                    c = t.clone();
+
+                return c.width(t.width());
             },
             start: function()
             {
                 var t = builder.getOverlayAttachment();
 
-                if (!t.parent().is('.row'))
+                /*if (!t.parent().is('.row'))
                     t.parent().addClass('draggable-parent');
                 else
-                    t.hide();
+                    t.hide();*/
 
                 builder.overlayDisabled = true;
-                builder.overlay.hide();
+                builder.overlay.add(builder.overlays.hover).add(t).hide();
             },
             stop: function()
             {
                 var t = builder.getOverlayAttachment();
-                builder.$('.draggable-parent').removeClass('draggable-parent');
+                // builder.$('.draggable-parent').removeClass('draggable-parent');
                 builder.overlayDisabled = false;
                 builder.overlay.add(t).show();
             }
@@ -471,7 +484,9 @@
                 break;
 
             case 'column': s = t.closest('.row') || false; break;
-            case 'row': s = this.$(this.container); break;
+            case 'row':
+                s = this.$('div.ui-sortable', this.container).add(this.$(this.container));
+                break;
             case 'component':
                 s = this.$('div.ui-sortable', this.container);
                 break;
@@ -818,15 +833,37 @@
                     var t = builder.getOverlayAttachment();
                     builder.changeComponent();
 
+                    var sender_id = builder.$(this).uniqueId().attr('id');
+                    if (!t.data('sortableSender')) t.data('sortableSender', sender_id);
+
                     ui.placeholder.css({
                         float: t.css('float'),
                         width: t.outerWidth(),
                         height: t.height()
                     });
                 },
+                sort: function(event, ui)
+                {
+                    var t = builder.getOverlayAttachment(),
+                        sender_id = t.data('sortableSender'),
+                        current_id = builder.$(this).uniqueId().attr('id');
+
+                    if (sender_id == current_id)
+                    {
+                        t.hide();
+                        return;
+                    }
+
+                    if (t.is(':visible'))
+                        return;
+
+                    t.show();
+                },
                 stop: function(e, ui)
                 {
                     var el = builder.getOverlayAttachment().show();
+                    el.removeData('sortableSender');
+
                     ui.item.replaceWith(el).show();
                     builder.attachOverlay();
                     builder.changeComponent();

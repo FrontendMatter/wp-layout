@@ -99,7 +99,7 @@ function AppCtrl($scope, $http, $timeout)
                     t = t.replaceWith(fc);
 
                     fc.uniqueId();
-                    attachOverlay(fc);
+                    builder_instance.attachOverlay(fc);
                 }
             }
         }
@@ -188,10 +188,9 @@ function AppCtrl($scope, $http, $timeout)
 
     $scope.saveComponentRequest = function(saveData)
     {
-        var oData = {
+        saveData = jQuery.extend({}, saveData, {
             'post_id': builder_instance.locationSearchObj().post
-        };
-        saveData = jQuery.extend({}, saveData, oData);
+        });
 
         $http({
             method: 'POST',

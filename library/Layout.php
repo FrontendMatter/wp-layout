@@ -78,6 +78,7 @@ class Layout extends PluginGeneric
         $this->handle_save_page();
         $this->handle_get_page();
         $this->handle_parse_page();
+        $this->handle_save_component();
     }
 
     private function initShared()
@@ -90,6 +91,41 @@ class Layout extends PluginGeneric
         PostType::make('page', $this->prefix)
             ->setOptions(['show_ui' => false, 'supports' => false])
             ->register();
+
+        PostType::make('component', $this->prefix)
+            ->setOptions(['show_ui' => false, 'supports' => false])
+            ->register();
+    }
+
+    private function metaboxes()
+    {
+        // Layout Meta Box
+        MetaBox::make($this->prefix, 'layout', $this->__('Layout'))
+            ->setPostType(null)
+            ->setDisplay($this->getMetaboxDisplay())
+            ->setPriority('high')
+            ->setContext('normal')
+            ->register();
+    }
+
+    /**
+     * Initialize Sidebar Shortcodes
+     */
+    private function initShortcodes()
+    {
+        add_action('init', function()
+        {
+            $shortcodes = [
+                'Grid_Row',
+                'Grid_Column'
+            ];
+
+            foreach ($shortcodes as $sc)
+            {
+                require_once realpath(__DIR__) . '/Shortcodes/' . $sc . '.php';
+                forward_static_call([__NAMESPACE__ . '\\' . $sc . '_Shortcode', 'init']);
+            }
+        });
     }
 
     private function enqueueAdminAssets()
@@ -153,17 +189,6 @@ class Layout extends PluginGeneric
             // jQuery UI Droppable
             wp_enqueue_script('jquery-ui-droppable');
         });
-    }
-
-    private function metaboxes()
-    {
-        // Layout Meta Box
-        MetaBox::make($this->prefix, 'layout', $this->__('Layout'))
-            ->setPostType(null)
-            ->setDisplay($this->getMetaboxDisplay())
-            ->setPriority('high')
-            ->setContext('normal')
-            ->register();
     }
 
     private function getMetaboxDisplay()
@@ -347,34 +372,61 @@ class Layout extends PluginGeneric
         });
     }
 
-    private function parseTemplateTags($content)
+    private function handle_save_component()
     {
-        $templateTagsMatch = '/{{([a-zA-Z0-9-._:, |]+)(options=[\"]([^\"]*)[\"])?}}/is';
-
-        preg_match_all($templateTagsMatch, $content, $matches);
-        $template_tags = $matches[1];
-        $options = $matches[3];
-
-        foreach($template_tags as $k => $template_tag)
+        $action = 'wp_ajax_builder_save_component';
+        add_action($action, function()
         {
-            $template_tag = trim($template_tag);
-            $tag_options = isset($options[$k]) ? $options[$k] : false;
-            $tag_replace = '{{' . $template_tag . ($tag_options ? ' options="'.$tag_options.'"' : '') . '}}';
+            $id = !empty($_REQUEST['id']) ? $_REQUEST['id'] : false;
+            $is_post = !empty($_POST);
 
-            $componentContent = '<div data-component="' . $template_tag . '"';
-            if ($tag_options)
+            if ($is_post)
             {
-                $tag_options_obj = [];
-                parse_str(htmlspecialchars_decode($tag_options), $tag_options_obj);
-                $tag_options_obj = str_replace('"', '\\u0022', json_encode($tag_options_obj));
-                $componentContent .= ' data-options="' . $tag_options_obj . '"';
+                // @todo: verify nonce
+                // check_ajax_referer( $this->prefix . '_' . $related_item . '_nonce', 'nonce' );
+                // if ( false ) wp_send_json_error( 'Security error' );
+
+                $post_id = false;
+                $related_save = [];
+
+                $query = new \WP_Query([
+                    'post_type' => $this->getPrefix('component'),
+                    'meta_query' => [
+                        'key' => 'component_id',
+                        'value' => $id
+                    ]
+                ]);
+                if ($query->have_posts())
+                {
+                    while ($query->have_posts())
+                    {
+                        $query->the_post();
+                        $post_id = get_the_ID();
+                    }
+                }
+                else
+                {
+                    $related_save = (array) @get_default_post_to_edit($this->getPrefix('component'), true);
+                    update_post_meta($related_save['ID'], 'component_id', $id);
+                }
+                wp_reset_query();
+
+                $related_save['post_status'] = 'publish';
+                $related_save['post_content'] = $_POST['template'];
+
+                if ($post_id) $related_save['ID'] = $post_id;
+                $saved = @wp_update_post($related_save, true);
+
+                if (is_a($saved, 'WP_Error'))
+                    wp_send_json_error($saved->get_error_messages());
+
+                if (!empty($_POST['options']))
+                    update_post_meta($related_save['ID'], 'options', $_POST['options']);
+
+                wp_send_json_success();
+                die();
             }
-            $componentContent .= '>' . $template_tag . '</div>';
-
-            $content = str_replace($tag_replace, $componentContent, $content);
-        }
-
-        return $content;
+        });
     }
 
     private function handle_options_editor()
@@ -496,23 +548,33 @@ class Layout extends PluginGeneric
         return $contentDataOverlay;
     }
 
-    /**
-     * Initialize Sidebar Shortcodes
-     */
-    private function initShortcodes()
+    private function parseTemplateTags($content)
     {
-        add_action('init', function()
-        {
-            $shortcodes = [
-                'Grid_Row',
-                'Grid_Column'
-            ];
+        $templateTagsMatch = '/{{([a-zA-Z0-9-._:, |]+)(options=[\"]([^\"]*)[\"])?}}/is';
 
-            foreach ($shortcodes as $sc)
+        preg_match_all($templateTagsMatch, $content, $matches);
+        $template_tags = $matches[1];
+        $options = $matches[3];
+
+        foreach($template_tags as $k => $template_tag)
+        {
+            $template_tag = trim($template_tag);
+            $tag_options = isset($options[$k]) ? $options[$k] : false;
+            $tag_replace = '{{' . $template_tag . ($tag_options ? ' options="'.$tag_options.'"' : '') . '}}';
+
+            $componentContent = '<div data-component="' . $template_tag . '"';
+            if ($tag_options)
             {
-                require_once realpath(__DIR__) . '/Shortcodes/' . $sc . '.php';
-                forward_static_call([__NAMESPACE__ . '\\' . $sc . '_Shortcode', 'init']);
+                $tag_options_obj = [];
+                parse_str(htmlspecialchars_decode($tag_options), $tag_options_obj);
+                $tag_options_obj = str_replace('"', '\\u0022', json_encode($tag_options_obj));
+                $componentContent .= ' data-options="' . $tag_options_obj . '"';
             }
-        });
+            $componentContent .= '>' . $template_tag . '</div>';
+
+            $content = str_replace($tag_replace, $componentContent, $content);
+        }
+
+        return $content;
     }
 }

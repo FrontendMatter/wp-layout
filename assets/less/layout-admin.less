@@ -144,8 +144,11 @@
   border: 1px dashed @inverseColor;
 }
 .placeholder-draggable {
-  border: 1px dashed #000;
-  background: rgba(0,0,0,.2);
+  .componentUI();
+  border-style: dashed;
+  border-width: 2px;
+  background: #FAFAFA;
+  &[class*="col-"] { margin: 0; }
 }
 .ui-highlight-drops {
   @color: green;
