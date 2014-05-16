@@ -1,0 +1,266 @@
+#mp-layout-builder {
+  border-top: 1px solid #d8d8d8;
+  border-bottom: 1px solid #d8d8d8;
+  -webkit-box-shadow: 0 5px 20px -10px rgba(0, 0, 0, 0.2) inset, 0 -5px 20px -10px rgba(0, 0, 0, 0.2) inset;
+  -moz-box-shadow: 0 5px 20px -10px rgba(0, 0, 0, 0.2) inset, 0 -5px 20px -10px rgba(0, 0, 0, 0.2) inset;
+  box-shadow: 0 5px 20px -10px rgba(0, 0, 0, 0.2) inset, 0 -5px 20px -10px rgba(0, 0, 0, 0.2) inset;
+  min-height: 50px;
+  position: relative;
+  overflow: hidden;
+  padding: 10px 5px;
+  margin: 12px -12px;
+}
+#mp-layout-builder .component {
+  min-height: 46px;
+  line-height: 46px;
+  cursor: pointer;
+  display: block;
+  margin: 10px;
+  border: 1px solid #e8e8e8;
+  background: rgba(0, 0, 0, 0.07);
+  -webkit-border-radius: 5px;
+  -moz-border-radius: 5px;
+  border-radius: 5px;
+}
+#mp-layout-builder .component:hover {
+  background: #fafafa;
+}
+#mp-layout-builder .component > .media > span.fa.pull-left {
+  margin-top: 10px;
+  margin-left: 10px;
+}
+#mp-layout-builder .row {
+  border: 1px dashed #E8E8E8;
+  -webkit-border-radius: 5px;
+  -moz-border-radius: 5px;
+  border-radius: 5px;
+  overflow: hidden;
+}
+#mp-layout-builder [class*="col-"] {
+  border: 1px dashed #E8E8E8;
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+  padding: 0;
+}
+#mp-layout-builder [class*="col-"]:first-of-type {
+  border-left-color: transparent;
+}
+#mp-layout-builder [class*="col-"]:last-of-type {
+  border-right-color: transparent;
+}
+#mp-layout-builder .row {
+  margin: 10px;
+  position: relative;
+}
+#mp-layout-builder .draggable-parent .ui-draggable,
+#mp-layout-builder .draggable-parent .placeholder-draggable {
+  display: none !important;
+  visibility: hidden !important;
+}
+#overlay {
+  background: rgba(0, 0, 0, 0.05);
+  -webkit-box-shadow: 0 0 5px rgba(34, 34, 34, 0.3);
+  -moz-box-shadow: 0 0 5px rgba(34, 34, 34, 0.3);
+  box-shadow: 0 0 5px rgba(34, 34, 34, 0.3);
+  border: 1px solid #222222;
+}
+#overlay,
+#overlay-hover {
+  -webkit-border-radius: 3px;
+  -moz-border-radius: 3px;
+  border-radius: 3px;
+  position: absolute;
+  z-index: 100000;
+  display: none;
+  cursor: pointer;
+}
+#overlay .btn,
+#overlay-hover .btn {
+  margin: 0 !important;
+}
+#overlay .btn + .btn,
+#overlay-hover .btn + .btn {
+  margin: 0 !important;
+}
+#overlay #overlay-menu,
+#overlay-hover #overlay-menu {
+  position: absolute;
+  top: -23px;
+  left: -1px;
+}
+#overlay #overlay-menu-right,
+#overlay-hover #overlay-menu-right {
+  position: absolute;
+  top: -23px;
+  right: -1px;
+}
+#overlay #overlay-label,
+#overlay-hover #overlay-label {
+  position: absolute;
+  top: 100%;
+  left: -1px;
+  line-height: 17px;
+  padding: 0 5px;
+  font-size: 8px;
+  background: #222222;
+  color: #fff;
+  -webkit-border-radius: 0 0 3px 3px;
+  -moz-border-radius: 0 0 3px 3px;
+  border-radius: 0 0 3px 3px;
+}
+#overlay .dropdown-menu,
+#overlay-hover .dropdown-menu {
+  background: #222222;
+  color: #fff;
+  padding: 0;
+  border: none;
+}
+#overlay .dropdown-menu .divider,
+#overlay-hover .dropdown-menu .divider {
+  margin: 0;
+  background-color: #080808;
+}
+#overlay .dropdown-menu > li > a,
+#overlay-hover .dropdown-menu > li > a {
+  color: #fff;
+  font-size: 10px;
+  padding: 3px 10px 3px 15px;
+}
+#overlay .dropdown-menu > li > a .strong,
+#overlay-hover .dropdown-menu > li > a .strong {
+  font-weight: 700;
+}
+#overlay-hover {
+  background: none;
+  border: 1px dashed #222222;
+}
+.placeholder-draggable {
+  border: 1px dashed #000;
+  background: rgba(0, 0, 0, 0.2);
+}
+.ui-highlight-drops {
+  border: 1px solid rgba(0, 128, 0, 0.4) !important;
+  background: rgba(0, 128, 0, 0.05) !important;
+  overflow: hidden;
+}
+.ui-highlight-drops.separator {
+  display: none;
+}
+.ui-highlight-drops.row {
+  padding: 15px 0;
+  margin: 0;
+}
+div.ui-highlight-drops[class*="col-"] {
+  min-height: 100px;
+}
+.ui-highlight-drops-separator {
+  margin: 0 0 15px !important;
+}
+div[class*="col-"].ui-sortable {
+  min-height: 50px !important;
+}
+.widget-body:empty,
+div[class*="col-"]:empty {
+  background: rgba(255, 0, 0, 0.05) !important;
+  border: 1px solid rgba(255, 0, 0, 0.1) !important;
+  min-height: 50px !important;
+}
+[contenteditable="true"] {
+  border: 1px dashed #222222 !important;
+}
+/*
+#builder-menu-bottom {
+  background: @inverseColor;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 30px;
+  #builder-breadcrumb {
+    -webkit-box-shadow: none;
+    -moz-box-shadow: none;
+    box-shadow: none;
+    border-bottom: none;
+    margin: 0;
+    height: 30px;
+    line-height: 30px;
+    display: inline-block;
+    &, * { color: #fff; text-shadow: none; }
+    li {
+      height: 30px;
+      line-height: 30px;
+      &.divider {
+        border-right: none;
+        border-left: 1px solid #2c2c2c;
+      }
+    }
+    a { cursor: pointer; }
+  }
+  .btn-group-xs {
+    float: right;
+    margin: 4px 5px 0 0;
+  }
+}
+*/
+#builder-editor .CodeMirror .cm-mustache {
+  color: #d9534f;
+  font-weight: bold;
+  cursor: pointer;
+}
+#builder-editor .CodeMirror .cm-mustache:hover {
+  text-decoration: underline;
+}
+#builder-breadcrumb {
+  margin-bottom: 0;
+}
+#builder-breadcrumb li {
+  margin-bottom: 0;
+}
+.animate-show.ng-hide-add,
+.animate-show.ng-hide-remove {
+  -webkit-transition: all linear 0.3s;
+  -moz-transition: all linear 0.3s;
+  -o-transition: all linear 0.3s;
+  transition: all linear 0.3s;
+  display: block!important;
+}
+.animate-show.ng-hide-add.ng-hide-add-active,
+.animate-show.ng-hide-remove {
+  opacity: 0;
+}
+.animate-show.ng-hide-add,
+.animate-show.ng-hide-remove.ng-hide-remove-active {
+  opacity: 1;
+}
+#gallery-components > ul > li > ul > li > .label {
+  display: block;
+  cursor: move;
+}
+#gallery-components > ul > li > ul > li > .component {
+  min-height: 46px;
+  line-height: 46px;
+  cursor: pointer;
+  display: block;
+  margin: 10px;
+  border: 1px solid #e8e8e8;
+  background: rgba(0, 0, 0, 0.07);
+  -webkit-border-radius: 5px;
+  -moz-border-radius: 5px;
+  border-radius: 5px;
+  margin: 0 0 10px;
+}
+#gallery-components > ul > li > ul > li > .component:hover {
+  background: #fafafa;
+}
+#gallery-components > ul > li > ul > li > .component > .media > span.fa.pull-left {
+  margin-top: 10px;
+  margin-left: 10px;
+}
+#gallery-components > ul > li > ul > li > .component p {
+  padding: 0;
+}
+#gallery-components:after {
+  clear: both;
+  content: "";
+  display: block;
+}
