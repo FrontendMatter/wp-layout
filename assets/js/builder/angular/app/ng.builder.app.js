@@ -32,8 +32,10 @@ function AppCtrl($scope, $http, $timeout)
     $scope.page = {
         id: null,
         template: null,
+        options: false,
         loading: false,
-        saving: false
+        saving: false,
+        clipboard: null
     };
     $scope.toggleCodeEditor = false;
     $scope.toggleOptionsEditor = false;
@@ -61,14 +63,6 @@ function AppCtrl($scope, $http, $timeout)
             reload = false;
 
         t = t.length ? t : $f(builder_instance.container);
-
-        /*
-         console.log('--- original ---');
-         console.log(t.html());
-         console.log('--- editor ---');
-         console.log($scope.bodyEditor);
-         return;
-         */
 
         if (t.data('original'))
         {
@@ -123,23 +117,6 @@ function AppCtrl($scope, $http, $timeout)
         return builder_instance.selectBreadcrumb(id);
     };
 
-    $scope.$watch('page.template', function(newValue, oldValue)
-    {
-        if (newValue == '')
-            builder_instance.$(builder_instance.container).empty();
-
-        if (newValue !== oldValue)
-        {
-            if ($scope.page.loading)
-                $scope.parseTemplate();
-            else
-            {
-                builder_instance.$(builder_instance.container).html(newValue);
-                builder_instance.applyComponent(false);
-            }
-        }
-    });
-
     $scope.$watch('displayComponents', function(n,o)
     {
         if (n!==o)
@@ -178,13 +155,71 @@ function AppCtrl($scope, $http, $timeout)
                         return alert(response.data);
                 }
 
-                $scope.page.template = response.data;
+                $scope.page.template_raw = response.data;
             })
             .error(function(data, status)
             {
 
             });
     };
+
+    $scope.$watch('page.template_raw', function(newValue, oldValue)
+    {
+        if (newValue == '')
+        {
+            builder_instance.$(builder_instance.container).empty();
+            $scope.page.loading = false;
+        }
+
+        if (newValue !== oldValue && newValue !== '')
+            $scope.parseTemplate();
+    });
+
+    $scope.parseTemplate = function()
+    {
+        $scope.code = null;
+        $scope.response = null;
+        $scope.page.loading = true;
+
+        $http({
+            method: 'POST',
+            url: ajaxurl + '?action=builder_parse_page',
+            data: jQuery.param({ 'template': $scope.page.template_raw }),
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+        })
+            .success(function(response, status)
+            {
+                $scope.status = status;
+                $scope.page.loading = false;
+
+                if (response == -1)
+                    return alert('An error occurred while parsing the template');
+
+                if (typeof response.success !== 'undefined')
+                {
+                    if (response.success !== true)
+                        return alert(response.data);
+                }
+
+                $scope.page.template = response.data.content;
+                $scope.page.options = response.data.options;
+            })
+            .error(function(data, status)
+            {
+                $scope.page.template = data || "Request failed";
+                $scope.page.loading = false;
+                $scope.status = status;
+            });
+    };
+
+    $scope.$watch('page.template', function(newValue, oldValue)
+    {
+        if (newValue !== oldValue)
+        {
+            builder_instance.$(builder_instance.container).html(newValue);
+            builder_instance.applyComponent(false);
+        }
+    });
 
     $scope.saveComponentRequest = function(saveData)
     {
@@ -234,6 +269,9 @@ function AppCtrl($scope, $http, $timeout)
 
     $scope.savePageRequest = function(saveData)
     {
+        if ($scope.page.template == null)
+            $scope.page.template = saveData.template;
+
         $http({
             method: 'POST',
             url: ajaxurl + '?action=builder_save_page',
@@ -250,42 +288,6 @@ function AppCtrl($scope, $http, $timeout)
             .error(function(data, status)
             {
                 $scope.page.saving = false;
-            });
-    };
-
-    $scope.parseTemplate = function()
-    {
-        $scope.code = null;
-        $scope.response = null;
-        $scope.page.loading = true;
-
-        $http({
-            method: 'POST',
-            url: ajaxurl + '?action=builder_parse_page',
-            data: jQuery.param({ 'template': $scope.page.template }),
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'}
-        })
-            .success(function(response, status)
-            {
-                $scope.status = status;
-                $scope.page.loading = false;
-
-                if (response == -1)
-                    return alert('An error occurred while parsing the template');
-
-                if (typeof response.success !== 'undefined')
-                {
-                    if (response.success !== true)
-                        return alert(response.data);
-                }
-
-                $scope.page.template = response.data;
-            })
-            .error(function(data, status)
-            {
-                $scope.page.template = data || "Request failed";
-                $scope.page.loading = false;
-                $scope.status = status;
             });
     };
 

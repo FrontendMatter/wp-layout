@@ -23,20 +23,27 @@
 
         this.container = options.container;
         this.document = options.document;
-        this.scope = typeof angular !== 'undefined' ? angular.element(this.container).scope() : false;
-
-        this.scope.safeApply = function(fn) {
-            var phase = this.$root.$$phase;
-            if(phase == '$apply' || phase == '$digest') {
-                if(fn && (typeof(fn) === 'function')) {
-                    fn();
-                }
-            } else {
-                this.$apply(fn);
-            }
-        };
-
         this.$ = this.fw.jQuery;
+
+        // angular app
+        this.scope = false;
+        if (typeof angular !== 'undefined')
+        {
+            this.$('html').attr('ng-app', 'App').attr('ng-controller', 'AppCtrl');
+            angular.bootstrap('html', ['App']);
+            this.scope = angular.element('html').scope();
+            this.scope.safeApply = function(fn) {
+                var phase = this.$root.$$phase;
+                if(phase == '$apply' || phase == '$digest') {
+                    if(fn && (typeof(fn) === 'function')) {
+                        fn();
+                    }
+                } else {
+                    this.$apply(fn);
+                }
+            };
+        }
+
         this.overlay = this.$(options.overlay_select);
         this.overlays = {
             select: this.overlay,
@@ -74,9 +81,9 @@
                 match = mustache.match(/\{\{([a-zA-Z0-9-._:, |]+)(options=[\"]([^\"]*)[\"])?\}\}/im),
                 id = builder.$.trim(match[1]),
                 options_str = match[3],
-                options = builder.deserialize(options_str.replace(/&amp;/gm, "&")),
+                options = typeof options_str == 'undefined' ? false : builder.deserialize(options_str.replace(/&amp;/gm, "&")),
                 t = builder.$('[data-component="' + id + '"]').filter(function(){
-                    var t_template = builder.makeTemplate(builder.$('<div/>').html(builder.$(this).clone(true)), false);
+                    var t_template = builder.makeTemplate(builder.$('<div/>').html(builder.$(this).clone(true)), false, false);
                     return t_template == mustache;
                 });
 
@@ -93,13 +100,12 @@
         this.$('#gallery-components').on('click', '.bcomponent', function(e)
         {
             var a = builder.getOverlayAttachment(),
-                o = builder.getOptions(a),
                 c = builder.overlay.is(':visible') ? a : builder.container,
                 e = builder.$(this).clone();
 
             if (a.is('[data-component]'))
             {
-                if ((o && typeof o.type != 'template') || !o)
+                if (!builder.isTypeTemplate(a))
                 {
                     builder.$(c).after(e);
                     builder.applyComponent();
@@ -107,8 +113,9 @@
                 }
             }
 
-            builder.$(c).prepend(e);
+            builder.$(c).append(e);
             builder.applyComponent();
+            builder.attachOverlay();
         });
     };
 
@@ -127,19 +134,11 @@
                     filterDivs = true;
             }
 
-            if (t.is('[data-component]'))
-            {
-                var t_options = builder.getOptions(t);
-                if (typeof t_options.type == 'undefined' || (typeof t_options.type !== 'undefined' && t_options.type != 'template'))
-                    filterDivs = true;
-            }
+            if (t.is('[data-component]') && !builder.isTypeTemplate(t))
+                filterDivs = true;
 
-            if (t_parent_component.length)
-            {
-                var tpc_options = builder.getOptions(t_parent_component);
-                if (typeof tpc_options.type == 'undefined' || (typeof tpc_options.type !== 'undefined' && tpc_options.type != 'template'))
-                    filterDivs = true;
-            }
+            if (t_parent_component.length && !builder.isTypeTemplate(t_parent_component))
+                filterDivs = true;
 
             return !t.is('.row')
                 && !t.is('.ui-sortable')
@@ -195,11 +194,6 @@
     builder.prototype.initOverlays = function()
     {
         var builder = this;
-
-        // since the overlay's are just before the </body> closing tag,
-        // it's outside of the ng-app declaration and the angular module needs to be bootstraped manually
-        angular.bootstrap(this.overlay.parent(), ['App']);
-
         this.$(this.document).add(this.overlays.select).add(this.overlays.hover)
             .on('mousemove.builder', function(event)
             {
@@ -353,6 +347,8 @@
         if (mode == 'component' && !t.is('[data-component]'))
             t = t.parent();
 
+        var options = this.getOptions(t);
+
         switch (mode)
         {
             default: o_label = t.get(0).tagName; break;
@@ -361,10 +357,7 @@
                 break;
 
             case 'row': o_label = 'Row'; break;
-            case 'component':
-                options = this.getOptions(t);
-                o_label = 'Component (' + options.view.label + ')';
-                break;
+            case 'component': o_label = 'Component (' + options.view.label + ')'; break;
         }
 
         t.uniqueId();
@@ -402,21 +395,52 @@
                 this.updateEditor();
 
             // options
-            var options = this.getOptions(t);
             this.toggleOverlayOptions(options);
         }
 
         // toggleCK('off');
     };
 
+    builder.prototype.attachClone = function(t, regen_guid)
+    {
+        regen_guid = typeof regen_guid == 'undefined' ? true : regen_guid;
+        regen_guid = regen_guid ? (t.is('[data-component]') ? true : false) : false;
+
+        t.add(t.find('[id*="ui-id-"]')).removeUniqueId().uniqueId();
+        t.add(t.find('.ui-sortable')).removeClass('ui-sortable');
+
+        if (regen_guid)
+        {
+            var new_guid = this.guid();
+            t.attr('data-component', new_guid);
+        }
+
+        this.makeSortables();
+        this.attachOverlay(t);
+        this.changeComponent();
+        this.saveComponent();
+    };
+
+    builder.prototype.getComponentOptions = function(component_id)
+    {
+        if (typeof this.scope.page.options[component_id] == 'undefined')
+            return false;
+
+        return this.scope.page.options[component_id];
+    };
+
     builder.prototype.getOptions = function(t)
     {
         t = typeof t == 'undefined' ? this.getOverlayAttachment() : t;
-        return t.data('options') ?
+
+        var t_options = this.getComponentOptions(t.attr('data-component'));
+        var t_data_options = t.data('options') ?
             (typeof t.data('options') == 'string' ?
                 this.$.parseJSON(t.data('options').replace(/\\u0022/g, '"')) :
                 t.data('options')) :
-            false;
+            {};
+
+        return this.$.extend({}, t_options ? t_options : {}, t_data_options);
     };
 
     builder.prototype.setOptions = function(t,o)
@@ -616,8 +640,7 @@
         if (t.is(this.container) || !this.$(this.container).find(t).length) return true;
 
         var t_parent_component = t.closest('[data-component]');
-        var t_options = t_parent_component.length ? this.getOptions(t_parent_component) : false;
-        if (!t.is('[data-component]') && t_options !== false && typeof t_options.type !== 'undefined' && t_options.type != 'template') return true;
+        if (!t.is('[data-component]') && t_parent_component.length && !this.isTypeTemplate(t_parent_component)) return true;
 
         return excluded;
     };
@@ -900,6 +923,7 @@
         this.bindKeysSave();
         this.bindKeysCode();
         this.bindKeysNavigation();
+        this.bindKeysCutCopyPaste();
         this.bindKeysEscape();
         this.bindKeysOptions();
         this.bindKeysRemove();
@@ -1046,6 +1070,56 @@
         });
     };
 
+    builder.prototype.bindKeysCutCopyPaste = function()
+    {
+        var builder = this;
+        this.fw.key('command+x,ctr+x', function(e, handler)
+        {
+            if (!builder.overlay.is(':visible'))
+                return;
+
+            e.preventDefault();
+            builder.scope.page.clipboard = {
+                'type': 'x',
+                'content': builder.getOverlayAttachment()
+            };
+        });
+
+        this.fw.key('command+c,ctr+c', function(e, handler)
+        {
+            if (!builder.overlay.is(':visible'))
+                return;
+
+            e.preventDefault();
+            builder.scope.page.clipboard = {
+                'type': 'c',
+                'content': builder.getOverlayAttachment()
+            };
+        });
+
+        this.fw.key('command+v,ctr+v', function(e, handler)
+        {
+            if (!builder.overlay.is(':visible'))
+                return;
+
+            if (builder.scope.page.clipboard == null)
+                return;
+
+            e.preventDefault();
+            var t = builder.getOverlayAttachment(),
+                content = builder.scope.page.clipboard.content,
+                type = builder.scope.page.clipboard.type,
+                clone = type == 'x' ? content : content.clone(true);
+
+            if (type == 'x')
+                builder.changeComponent(false, t.parent());
+
+            t.append(clone);
+            builder.attachClone(clone, type == 'c');
+            builder.scope.page.clipboard = null;
+        });
+    };
+
     builder.prototype.bindKeysDuplicate = function()
     {
         var builder = this;
@@ -1056,24 +1130,10 @@
 
             e.preventDefault();
             var t = builder.getOverlayAttachment(),
-                n = t.clone(),
-                mode = builder.getSelectionMode(t);
+                n = t.clone();
 
             t.after(n);
-
-            n.add(n.find('[class*="col-"], .row, [data-component]'))
-                .removeUniqueId()
-                .uniqueId();
-
-            if (mode == 'row' || mode == 'column')
-            {
-                n.add(n.find('.row, [class*="col-"]')).removeClass('ui-sortable');
-                builder.makeSortables();
-            }
-
-            builder.attachOverlay(n);
-            builder.changeComponent();
-            builder.saveComponent();
+            builder.attachClone(n, true);
         });
     };
 
@@ -1216,7 +1276,6 @@
             },
             data = this.$.param(iframe_data);
 
-        console.log(data);
         tb_show('', ajaxurl + '?' + data + '#TB_iframe');
     };
 
@@ -1348,7 +1407,7 @@
                 false,
             c = !b ? b : a.is('[data-component]') ? b : this.$('<div/>').html(b.prop('outerHTML')).find('> *').first().html(b).end();
 
-        var d = !c ? this.getTemplate(false) : this.makeTemplate(c, false),
+        var d = !c ? this.getTemplate(false, false) : this.makeTemplate(c, false, false),
             e = this.beautify(d),
             builder = this;
 
@@ -1396,7 +1455,8 @@
                     var componentName = components.shift(),
                         t = changes.filter('[data-component*="' + componentName + '"]'),
                         id = builder.isGuid(componentName, ""),
-                        template;
+                        template = false,
+                        options = builder.getOptions(t);
 
                     if (id && id.length)
                         id = id[0];
@@ -1406,16 +1466,23 @@
                         t.attr('data-component', id);
                     }
 
-                    if (t.data('original'))
-                        template = builder.makeTemplate(builder.$('<div/>').html(t.data('original')));
-                    else
-                        template = builder.makeTemplate(t.clone());
+                    if (builder.isTypeTemplate(t))
+                    {
+                        if (t.data('original'))
+                            template = builder.makeTemplate(builder.$('<div/>').html(t.data('original')));
+                        else
+                            template = builder.makeTemplate(t.clone());
+                    }
 
                     var o = {
-                        name: componentName,
-                        template: template,
                         id: id
                     };
+
+                    if (builder.isTypeTemplate(t))
+                        o.template = template;
+
+                    if (options)
+                        o.options = options;
 
                     builder.ngSaveComponent(o);
                 }
@@ -1431,19 +1498,23 @@
     {
         r = typeof r == 'undefined' ? false : r;
         t = typeof t == 'undefined' ? this.getOverlayAttachment() : t;
-        var builder = this;
 
         if (r === false)
         {
-            var p = t.parents('[data-component]').addBack().filter(function()
-            {
-                var t_options = builder.getOptions(t);
-                return typeof t_options.type !== 'undefined' && t_options.type == 'template';
-            });
+            var p = t.parents('[data-component]').addBack();
             if (p.length) p.attr('data-builder-saveComponent', true);
         }
         else
             this.$('[data-builder-saveComponent]').removeAttr('data-builder-saveComponent');
+    };
+
+    builder.prototype.isTypeTemplate = function(t)
+    {
+        if (!t.is('[data-component]'))
+            return false;
+
+        var options = this.getOptions(t);
+        return options && typeof options.type !== 'undefined' && options.type == 'template';
     };
 
     builder.prototype.ngSaveComponent = function(o)
@@ -1451,7 +1522,7 @@
         var builder = this;
         this.scope.safeApply(function()
         {
-            builder.scope.savePage = {};
+            builder.scope.page.saving = {};
             builder.scope.saveComponent = o;
         });
     };
@@ -1460,7 +1531,7 @@
     {
         reload = typeof reload == 'undefined' ? false : reload;
 
-        var template = this.getTemplate(false),
+        var template = this.getTemplate(false, false),
             searchId = this.scope.page.id,
             id = searchId ? this.isGuid(searchId) : false,
             builder = this;
@@ -1523,7 +1594,7 @@
                 var e = builder.$('<div></div>'),
 
                     // get the component default view options
-                    e_options_view_default = builder.getComponentViewOptions(t),
+                    e_options_view_default = builder.getComponentDefaultViewOptions(t),
 
                     // merge the component default view options with view options passed with data
                     e_options_view_data = t.data('view') ?
@@ -1578,26 +1649,28 @@
             builder.saveComponent();
     };
 
-    builder.prototype.getComponentViewOptions = function(t)
+    builder.prototype.getComponentDefaultViewOptions = function(t)
     {
         var component = t.attr('data-component'),
+            options = this.getComponentOptions(component),
             options_view_default = {
                 'id': component,
                 'label': component,
                 'description': 'no description available',
                 'icon': 'fa-2x fa-windows'
             },
+            component_id = options ? options.view.id : component,
             components_scope = angular.element('#gallery-components').scope(),
             components_list = components_scope.components,
             options_view = {};
 
         this.$.each(components_list, function(ck,cv){
-            var view = cv.views.filter(function(o){ return o.component.id == component });
+            var view = cv.views.filter(function(o){ return o.component.id == component_id });
             if (view.length) {
                 options_view = view[0].component;
                 return false;
             }
-        })
+        });
 
         return this.$.extend({}, options_view_default, options_view);
     };

@@ -58,6 +58,9 @@ class Layout extends PluginGeneric
         return self::$instance;
     }
 
+    /**
+     * Activate the plugin
+     */
     public static function activate()
     {
         $instance = self::getInstance();
@@ -72,6 +75,7 @@ class Layout extends PluginGeneric
     private function initAdmin()
     {
         if (!is_admin()) return false;
+
         $this->enqueueAdminAssets();
         $this->metaboxes();
         $this->handle_options_editor();
@@ -81,11 +85,17 @@ class Layout extends PluginGeneric
         $this->handle_save_component();
     }
 
+    /**
+     * Initialize Shared Resources
+     */
     private function initShared()
     {
         $this->post_types();
     }
 
+    /**
+     * Create the layout post types
+     */
     private function post_types()
     {
         PostType::make('page', $this->prefix)
@@ -97,6 +107,9 @@ class Layout extends PluginGeneric
             ->register();
     }
 
+    /**
+     * Create the Layout metaboxes
+     */
     private function metaboxes()
     {
         // Layout Meta Box
@@ -128,24 +141,28 @@ class Layout extends PluginGeneric
         });
     }
 
+    /**
+     * Load the required admin assets
+     */
     private function enqueueAdminAssets()
     {
         add_action('admin_footer', function()
         {
             echo $this->getBuilderOverlay();
         });
+
         add_action('admin_enqueue_scripts', function()
         {
             wp_enqueue_style('mp-layout-admin', plugin_dir_url(plugin_dir_path(__FILE__)) . 'assets/css/layout-admin.css');
 
-            // dependencies
+            // Keymaster
             wp_enqueue_script('mp-keymaster', plugin_dir_url(plugin_dir_path(__FILE__)) . 'assets/js/builder/lib/keymaster/keymaster.js', ['jquery'], false, true);
 
             // Angular libraries
             wp_enqueue_script('mp-angular', plugin_dir_url(plugin_dir_path(__FILE__)) . 'assets/js/builder/lib/angular/angular.min.js', ['jquery'], false);
             wp_enqueue_script('mp-angular-animate', plugin_dir_url(plugin_dir_path(__FILE__)) . 'assets/js/builder/lib/angular/angular-animate.js', ['mp-angular'], false);
 
-            // Beautify
+            // Beautify HTML Dependency
             wp_enqueue_script('mp-beautify', plugin_dir_url(plugin_dir_path(__FILE__)) . 'assets/js/builder/lib/beautify/beautify.js', ['jquery'], false);
             wp_enqueue_script('mp-beautify-html', plugin_dir_url(plugin_dir_path(__FILE__)) . 'assets/js/builder/lib/beautify/beautify-html.js', ['mp-beautify'], false);
 
@@ -170,18 +187,10 @@ class Layout extends PluginGeneric
             wp_enqueue_script('mp-codemirror-refresh', plugin_dir_url(plugin_dir_path(__FILE__)) . 'assets/js/builder/angular/directives/ui-codemirror-refresh.js', ['mp-codemirror'], false, true);
 
             // Common Filters
-            // js.ng.filter.isarray = 1
-            wp_enqueue_script('mp-builder-ng-filter-isarray', plugin_dir_url(plugin_dir_path(__FILE__)) . 'assets/js/builder/angular/filters/ng.filter.isarray.js', ['mp-angular'], false, true);
+            wp_enqueue_script('mp-ng-filter-isarray', plugin_dir_url(plugin_dir_path(__FILE__)) . 'assets/js/builder/angular/filters/ng.filter.isarray.js', ['mp-angular'], false, true);
 
             // Components directive
-            wp_enqueue_script('mp-builder-directive-components', plugin_dir_url(plugin_dir_path(__FILE__)) . 'assets/js/builder/angular/directives/ng.builder.directive.components.js', ['mp-angular'], false, true);
-
-            // iframe Directive
-            // wp_enqueue_script('mp-builder-ng-directive-iframe', plugin_dir_url(plugin_dir_path(__FILE__)) . 'assets/js/builder/angular/directives/ng.builder.directive.iframe.js', ['mp-angular'], false, true);
-
-            // sidr
-            // wp_enqueue_style('mp-sidr', plugin_dir_url(plugin_dir_path(__FILE__)) . 'assets/lib/sidr/css/jquery.sidr.css');
-            // wp_enqueue_script('mp-sidr', plugin_dir_url(plugin_dir_path(__FILE__)) . 'assets/lib/sidr/js/jquery.sidr.js', ['jquery'], false, true);
+            wp_enqueue_script('mp-builder-components', plugin_dir_url(plugin_dir_path(__FILE__)) . 'assets/js/builder/angular/directives/ng.builder.directive.components.js', ['mp-angular'], false, true);
 
             // Initialize Builder
             wp_enqueue_script('mp-builder-init', plugin_dir_url(plugin_dir_path(__FILE__)) . 'assets/js/layout-admin.js', ['mp-builder'], false, true);
@@ -191,11 +200,15 @@ class Layout extends PluginGeneric
         });
     }
 
+    /**
+     * Builder's MetaBox Content
+     * @return array
+     */
     private function getMetaboxDisplay()
     {
         $formbuilder = new FormBuilder();
         return [
-            '<div ng-app="App" ng-controller="AppCtrl">',
+            '<div>',
 
                 ButtonToolbar::make()
                     ->add(
@@ -221,6 +234,10 @@ class Layout extends PluginGeneric
         ];
     }
 
+    /**
+     * Builder's Page Options UI
+     * @return string
+     */
     private function getBuilderPage()
     {
         $formbuilder = new FormBuilder();
@@ -233,6 +250,10 @@ class Layout extends PluginGeneric
         return $content;
     }
 
+    /**
+     * The Builder's Components UI
+     * @return mixed
+     */
     private function getBuilderComponents()
     {
         $content =
@@ -244,6 +265,10 @@ class Layout extends PluginGeneric
         return $iframe;
     }
 
+    /**
+     * The Builder's Footer UI
+     * @return string
+     */
     private function getBuilderFooter()
     {
         $content =
@@ -256,6 +281,9 @@ class Layout extends PluginGeneric
         return $content;
     }
 
+    /**
+     * Save a Builder page template to the DB
+     */
     private function handle_save_page()
     {
         $action = 'wp_ajax_builder_save_page';
@@ -276,8 +304,10 @@ class Layout extends PluginGeneric
                 $query = new \WP_Query([
                     'post_type' => $this->getPrefix('page'),
                     'meta_query' => [
-                        'key' => 'page_id',
-                        'value' => $id
+                        [
+                            'key' => 'page_id',
+                            'value' => $id
+                        ]
                     ]
                 ]);
                 if ($query->have_posts())
@@ -308,6 +338,9 @@ class Layout extends PluginGeneric
         });
     }
 
+    /**
+     * Get a builder page template from the DB
+     */
     private function handle_get_page()
     {
         $action = 'wp_ajax_builder_get_page';
@@ -326,8 +359,10 @@ class Layout extends PluginGeneric
                 $query = new \WP_Query([
                     'post_type' => $this->getPrefix('page'),
                     'meta_query' => [
-                        'key' => 'page_id',
-                        'value' => $id
+                        [
+                            'key' => 'page_id',
+                            'value' => $id
+                        ]
                     ]
                 ]);
                 if ($query->have_posts())
@@ -349,6 +384,9 @@ class Layout extends PluginGeneric
         });
     }
 
+    /**
+     * Parse a builder template for special tags and return builder markup & component options
+     */
     private function handle_parse_page()
     {
         $action = 'wp_ajax_builder_parse_page';
@@ -372,6 +410,9 @@ class Layout extends PluginGeneric
         });
     }
 
+    /**
+     * Save a component
+     */
     private function handle_save_component()
     {
         $action = 'wp_ajax_builder_save_component';
@@ -386,42 +427,30 @@ class Layout extends PluginGeneric
                 // check_ajax_referer( $this->prefix . '_' . $related_item . '_nonce', 'nonce' );
                 // if ( false ) wp_send_json_error( 'Security error' );
 
-                $post_id = false;
-                $related_save = [];
-
-                $query = new \WP_Query([
-                    'post_type' => $this->getPrefix('component'),
-                    'meta_query' => [
-                        'key' => 'component_id',
-                        'value' => $id
-                    ]
-                ]);
-                if ($query->have_posts())
+                $component = $this->getComponent($id);
+                if ($component)
                 {
-                    while ($query->have_posts())
-                    {
-                        $query->the_post();
-                        $post_id = get_the_ID();
-                    }
+                    $post_id = $component['post_id'];
+                    $related_save = ['ID' => $post_id];
                 }
                 else
                 {
                     $related_save = (array) @get_default_post_to_edit($this->getPrefix('component'), true);
-                    update_post_meta($related_save['ID'], 'component_id', $id);
+                    $post_id = $related_save['ID'];
+                    update_post_meta($post_id, 'component_id', $id);
                 }
-                wp_reset_query();
 
                 $related_save['post_status'] = 'publish';
-                $related_save['post_content'] = $_POST['template'];
-
-                if ($post_id) $related_save['ID'] = $post_id;
                 $saved = @wp_update_post($related_save, true);
 
                 if (is_a($saved, 'WP_Error'))
                     wp_send_json_error($saved->get_error_messages());
 
                 if (!empty($_POST['options']))
-                    update_post_meta($related_save['ID'], 'options', $_POST['options']);
+                    update_post_meta($post_id, 'options', $_POST['options']);
+
+                if (!empty($_POST['template']))
+                    update_post_meta($post_id, 'template', $_POST['template']);
 
                 wp_send_json_success();
                 die();
@@ -429,6 +458,9 @@ class Layout extends PluginGeneric
         });
     }
 
+    /**
+     * Display and handle options forms for components
+     */
     private function handle_options_editor()
     {
         $action = 'wp_ajax_builder_editor';
@@ -471,6 +503,10 @@ class Layout extends PluginGeneric
         });
     }
 
+    /**
+     * The Builder Code Editor UI
+     * @return string
+     */
     private function getBuilderCodeEditor()
     {
         $content =
@@ -486,6 +522,10 @@ class Layout extends PluginGeneric
         return $content;
     }
 
+    /**
+     * Toggle Code Editor UI
+     * @return string
+     */
     private function getBuilderToggleCodeEditor()
     {
         $content =
@@ -498,6 +538,10 @@ class Layout extends PluginGeneric
         return $content;
     }
 
+    /**
+     * The Builder Breadcrumb UI
+     * @return string
+     */
     private function getBuilderBreadcrumb()
     {
         $content =
@@ -512,10 +556,14 @@ class Layout extends PluginGeneric
         return $content;
     }
 
+    /**
+     * The Builder Overlays UI
+     * @return string
+     */
     private function getBuilderOverlay()
     {
         $contentDataOverlay =
-            '<div class="bootstrap ng-hide" ng-controller="AppCtrl" ng-show="!page.saving && !page.loading && page.template">
+            '<div class="bootstrap ng-hide" ng-show="!page.saving && !page.loading && page.template">
                 <div id="overlay-hover">
                     <span id="overlay-label">Hover Overlay</span>
                 </div>
@@ -548,6 +596,11 @@ class Layout extends PluginGeneric
         return $contentDataOverlay;
     }
 
+    /**
+     * Parse a builder template for components
+     * @param $content
+     * @return array
+     */
     private function parseTemplateTags($content)
     {
         $templateTagsMatch = '/{{([a-zA-Z0-9-._:, |]+)(options=[\"]([^\"]*)[\"])?}}/is';
@@ -556,25 +609,88 @@ class Layout extends PluginGeneric
         $template_tags = $matches[1];
         $options = $matches[3];
 
+        $componentOptions = [];
+
         foreach($template_tags as $k => $template_tag)
         {
             $template_tag = trim($template_tag);
             $tag_options = isset($options[$k]) ? $options[$k] : false;
             $tag_replace = '{{' . $template_tag . ($tag_options ? ' options="'.$tag_options.'"' : '') . '}}';
 
-            $componentContent = '<div data-component="' . $template_tag . '"';
             if ($tag_options)
             {
                 $tag_options_obj = [];
                 parse_str(htmlspecialchars_decode($tag_options), $tag_options_obj);
-                $tag_options_obj = str_replace('"', '\\u0022', json_encode($tag_options_obj));
-                $componentContent .= ' data-options="' . $tag_options_obj . '"';
+                $tag_options_json = str_replace('"', '\\u0022', json_encode($tag_options_obj));
             }
-            $componentContent .= '>' . $template_tag . '</div>';
+
+            $component = $this->getComponent($template_tag);
+            $tag_db_options = !$component ? false : !empty($component['options']) ? $component['options'] : false;
+            $tag_db_template = !$component ? false : !empty($component['template']) ? $component['template'] : false;
+
+            $componentContentTemp = $tag_db_template ? $tag_db_template : $template_tag;
+            if ($tag_db_options) $componentOptions[$template_tag] = $tag_db_options;
+
+            if ($tag_db_template)
+            {
+                preg_match_all($templateTagsMatch, $componentContentTemp, $matchesComponent);
+                $componentHasTags = count($matchesComponent[1]) > 0;
+
+                if ($componentHasTags)
+                {
+                    $parseTemplateTemp = $this->parseTemplateTags($componentContentTemp);
+                    $componentContentTemp = $parseTemplateTemp['content'];
+                    $componentOptions = array_merge($componentOptions, $parseTemplateTemp['options']);
+                }
+            }
+
+            $componentContent = '<div data-component="' . $template_tag . '"';
+            if ($tag_options) $componentContent .= ' data-options="' . $tag_options_json . '"';
+            $componentContent .= '>' . $componentContentTemp . '</div>';
 
             $content = str_replace($tag_replace, $componentContent, $content);
         }
 
-        return $content;
+        return ['content' => $content, 'options' => $componentOptions];
+    }
+
+    /**
+     * Get component data from the DB
+     * @param $id
+     * @return array|bool
+     */
+    private function getComponent($id)
+    {
+        $query = new \WP_Query([
+            'post_type' => $this->getPrefix('component'),
+            'meta_query' => [
+                [
+                    'key' => 'component_id',
+                    'value' => $id
+                ]
+            ]
+        ]);
+
+        $post_id = false;
+        if ($query->have_posts())
+        {
+            while ($query->have_posts())
+            {
+                $query->the_post();
+                $post_id = get_the_ID();
+            }
+        }
+
+        wp_reset_query();
+
+        if (!$post_id)
+            return false;
+
+        $return = [ 'component_id' => $id, 'post_id' => $post_id ];
+        $template = get_post_meta($post_id, 'template', true);
+        $options = get_post_meta($post_id, 'options', true);
+        if (!empty($template)) $return['template'] = $template;
+        if (!empty($options)) $return['options'] = $options;
+        return $return;
     }
 }
