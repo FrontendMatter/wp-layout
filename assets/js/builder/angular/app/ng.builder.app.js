@@ -346,6 +346,7 @@ function ComponentsCtrl($scope)
                     "options": {
                         "id": "1",
                         "type": "shortcode",
+                        "shortcode_id": "register_sidebar",
                         "shortcode_atts": ["id"],
                         "form": [
                             {
@@ -366,6 +367,7 @@ function ComponentsCtrl($scope)
                         "id": "my-sidebar",
                         "type": "shortcode",
                         "shortcode_atts": ["id"],
+                        "shortcode_id": "display_sidebar",
                         "form": [
                             {
                                 "name": "id",
@@ -387,7 +389,21 @@ function ComponentsCtrl($scope)
                         "description": "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Deserunt, ipsum?",
                         "icon": "fa-2x fa-file-text-o"
                     },
-                    "options": { "type": "shortcode" }
+                    "options": {
+                        "type": "shortcode",
+                        "shortcode_id": "post_title",
+                        "shortcode_atts": ["size"],
+                        "size": "h1",
+                        "form": [
+                            {
+                                "name": "size",
+                                "label": "Heading Size",
+                                "type": "select_range",
+                                "range": [1,5],
+                                "format": "h%d"
+                            }
+                        ]
+                    }
                 },
                 {
                     "component": {
@@ -396,7 +412,20 @@ function ComponentsCtrl($scope)
                         "description": "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Deserunt, ipsum?",
                         "icon": "fa-2x fa-file-text-o"
                     },
-                    "options": { "type": "shortcode" }
+                    "options": {
+                        "type": "shortcode",
+                        "shortcode_id": "post_content",
+                        "shortcode_atts": ["thumbnail"],
+                        "thumbnail": 1,
+                        "form": [
+                            {
+                                "name": "thumbnail",
+                                "label": "Display post thumbnail",
+                                "type": "radio_buttons",
+                                "values": { 1 : 'Enable', 0: 'Disable' }
+                            }
+                        ]
+                    }
                 }
             ]
         }

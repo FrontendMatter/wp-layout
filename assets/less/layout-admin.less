@@ -61,6 +61,23 @@
         visibility: hidden !important;
       }
   }
+  &.loading {
+    &:after {
+      display: block;
+      content: "Loading ...";
+      position: absolute;
+      padding: 10px;
+      text-align: center;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255,255,255,.8);
+      font-size: 12pt;
+      font-style: italic;
+      cursor: progress;
+    }
+  }
 }
 
 @inverseColor: #222;

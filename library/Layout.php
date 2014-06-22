@@ -31,6 +31,9 @@ class Layout extends PluginGeneric
         // i18n
         $instance->loadTextDomain();
 
+        // Initialize Layout Templates
+        $instance->initTemplates();
+
         // Load Plugin Templates into the current Theme
         $instance->plugin->initPluginTemplates();
 
@@ -94,6 +97,23 @@ class Layout extends PluginGeneric
     }
 
     /**
+     * Initialize Layout Templates
+     */
+    private function initTemplates()
+    {
+        // Display Custom page templates in WP Admin Post screen
+        add_action('init', function()
+        {
+            $this->plugin->initPostTemplates(get_post_types(['public'=>true]));
+        });
+
+        // Set Custom page templates
+        $this->plugin->setPageTemplates([
+            $this->getPrefix('layout') . '-global.php' => $this->__('Builder Layout Template')
+        ]);
+    }
+
+    /**
      * Create the layout post types
      */
     private function post_types()
@@ -130,7 +150,9 @@ class Layout extends PluginGeneric
         {
             $shortcodes = [
                 'Grid_Row',
-                'Grid_Column'
+                'Grid_Column',
+                'Post_Title',
+                'Post_Content'
             ];
 
             foreach ($shortcodes as $sc)
@@ -228,7 +250,7 @@ class Layout extends PluginGeneric
 
                 $this->getBuilderPage(),
                 $this->getBuilderComponents(),
-                '<div id="mp-layout-builder" ng-show="!page.loading && !page.saving" class="animate-show ng-hide"></div>',
+                '<div id="mp-layout-builder" ng-class="{ loading: page.loading || page.saving }"></div>',
                 $this->getBuilderFooter(),
             '</div>'
         ];
@@ -298,37 +320,17 @@ class Layout extends PluginGeneric
                 // check_ajax_referer( $this->prefix . '_' . $related_item . '_nonce', 'nonce' );
                 // if ( false ) wp_send_json_error( 'Security error' );
 
-                $post_id = false;
-                $related_save = [];
-
-                $query = new \WP_Query([
-                    'post_type' => $this->getPrefix('page'),
-                    'meta_query' => [
-                        [
-                            'key' => 'page_id',
-                            'value' => $id
-                        ]
-                    ]
-                ]);
-                if ($query->have_posts())
-                {
-                    while ($query->have_posts())
-                    {
-                        $query->the_post();
-                        $post_id = get_the_ID();
-                    }
-                }
+                $template = $this->getLayoutTemplate($id);
+                if ($template)
+                    $related_save = ['ID' => $template['post_id']];
                 else
                 {
                     $related_save = (array) @get_default_post_to_edit($this->getPrefix('page'), true);
                     update_post_meta($related_save['ID'], 'page_id', $id);
                 }
-                wp_reset_query();
 
                 $related_save['post_status'] = 'publish';
-                $related_save['post_content'] = $_POST['template'];
-
-                if ($post_id) $related_save['ID'] = $post_id;
+                if (isset($_POST['template'])) $related_save['post_content'] = $_POST['template'];
                 $saved = @wp_update_post($related_save, true);
 
                 if (is_a($saved, 'WP_Error')) wp_send_json_error($saved->get_error_messages());
@@ -355,30 +357,11 @@ class Layout extends PluginGeneric
                 // check_ajax_referer( $this->prefix . '_' . $related_item . '_nonce', 'nonce' );
                 // if ( false ) wp_send_json_error( 'Security error' );
 
-                $template = '';
-                $query = new \WP_Query([
-                    'post_type' => $this->getPrefix('page'),
-                    'meta_query' => [
-                        [
-                            'key' => 'page_id',
-                            'value' => $id
-                        ]
-                    ]
-                ]);
-                if ($query->have_posts())
-                {
-                    while ($query->have_posts())
-                    {
-                        $query->the_post();
-                        $template = get_the_content();
-                    }
-                }
-                else
-                    wp_send_json_error( 'Not found' );
+                $template = $this->getLayoutTemplate($id);
+                if ($template)
+                    wp_send_json_success($template['template']);
 
-                wp_reset_query();
-
-                wp_send_json_success($template);
+                wp_send_json_error( 'Not found' );
                 die();
             }
         });
@@ -487,12 +470,29 @@ class Layout extends PluginGeneric
                         {
 
                             $formType = isset($formControl['type']) ? $formControl['type'] : "input";
-                            FormBuilder::$formType($formControl['name'], $formControl['label'], $options[$formControl['name']]);
+                            switch($formType)
+                            {
+                                default:
+                                case 'input':
+                                case 'textarea':
+                                    FormBuilder::$formType($formControl['name'], $formControl['label'], $options[$formControl['name']]);
+                                    break;
+
+                                case 'select_range':
+                                    FormBuilder::$formType($formControl['name'], $formControl['label'], $options[$formControl['name']], $formControl['range'], $formControl['format']);
+                                    break;
+
+                                case 'checkbox_buttons':
+                                case 'radio_buttons':
+                                    FormBuilder::$formType($formControl['name'], $formControl['label'], $options[$formControl['name']], $formControl['values']);
+                                    break;
+                            }
 
                         }
                     }
                     ?>
 
+                    <hr/>
                     <button type="submit" class="btn btn-success">Save</button>
 
                 </div>
@@ -601,7 +601,7 @@ class Layout extends PluginGeneric
      * @param $content
      * @return array
      */
-    private function parseTemplateTags($content)
+    public function parseTemplateTags($content, $builder_markup = true)
     {
         $templateTagsMatch = '/{{([a-zA-Z0-9-._:, |]+)(options=[\"]([^\"]*)[\"])?}}/is';
 
@@ -644,9 +644,18 @@ class Layout extends PluginGeneric
                 }
             }
 
-            $componentContent = '<div data-component="' . $template_tag . '"';
-            if ($tag_options) $componentContent .= ' data-options="' . $tag_options_json . '"';
-            $componentContent .= '>' . $componentContentTemp . '</div>';
+            if ($builder_markup)
+            {
+                $componentContent = '<div data-component="' . $template_tag . '"';
+                if ($tag_options) $componentContent .= ' data-options="' . $tag_options_json . '"';
+                $componentContent .= '>' . $componentContentTemp . '</div>';
+            }
+            else
+            {
+                $componentContent  = $componentContentTemp;
+                if ($tag_db_options['type'] == 'shortcode')
+                    $componentContent = $this->getComponentShortcode($tag_db_options);
+            }
 
             $content = str_replace($tag_replace, $componentContent, $content);
         }
@@ -654,12 +663,33 @@ class Layout extends PluginGeneric
         return ['content' => $content, 'options' => $componentOptions];
     }
 
+    private function getComponentShortcode($options)
+    {
+        if (!isset($options['shortcode_id'])) return "[invalid shortcode configuration]";
+
+        $shortcode = '[{{shortcode_id}}{{shortcode_atts}}]';
+        $shortcode_atts = "";
+
+        if (!empty($options['shortcode_atts']))
+        {
+            foreach($options['shortcode_atts'] as $shortcode_atts_field)
+            {
+                if (!empty($options[$shortcode_atts_field]) || isset($options[$shortcode_atts_field]) && (int) $options[$shortcode_atts_field] == 0)
+                    $shortcode_atts .= ' ' . $shortcode_atts_field . '="' . $options[$shortcode_atts_field] . '"';
+            }
+        }
+
+        $shortcode = str_replace("{{shortcode_id}}", $options['shortcode_id'], $shortcode);
+        $shortcode = str_replace("{{shortcode_atts}}", $shortcode_atts, $shortcode);
+        return $shortcode;
+    }
+
     /**
      * Get component data from the DB
      * @param $id
      * @return array|bool
      */
-    private function getComponent($id)
+    public function getComponent($id)
     {
         $query = new \WP_Query([
             'post_type' => $this->getPrefix('component'),
@@ -691,6 +721,43 @@ class Layout extends PluginGeneric
         $options = get_post_meta($post_id, 'options', true);
         if (!empty($template)) $return['template'] = $template;
         if (!empty($options)) $return['options'] = $options;
+        return $return;
+    }
+
+    /**
+     * Get page data from the DB
+     * @param $id
+     * @return array|bool
+     */
+    public function getLayoutTemplate($id)
+    {
+        $query = new \WP_Query([
+            'post_type' => $this->getPrefix('page'),
+            'meta_query' => [
+                [
+                    'key' => 'page_id',
+                    'value' => $id
+                ]
+            ]
+        ]);
+
+        $post_id = false;
+        if ($query->have_posts())
+        {
+            while ($query->have_posts())
+            {
+                $query->the_post();
+                $post_id = get_the_ID();
+                $post_content = get_the_content();
+            }
+        }
+
+        wp_reset_query();
+
+        if (!$post_id)
+            return false;
+
+        $return = [ 'page_id' => $id, 'post_id' => $post_id, 'template' => $post_content ];
         return $return;
     }
 }

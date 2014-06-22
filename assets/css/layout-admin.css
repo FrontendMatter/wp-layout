@@ -57,6 +57,21 @@
   display: none !important;
   visibility: hidden !important;
 }
+#mp-layout-builder.loading:after {
+  display: block;
+  content: "Loading ...";
+  position: absolute;
+  padding: 10px;
+  text-align: center;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  font-size: 12pt;
+  font-style: italic;
+  cursor: progress;
+}
 #overlay {
   background: rgba(0, 0, 0, 0.05);
   -webkit-box-shadow: 0 0 5px rgba(34, 34, 34, 0.3);

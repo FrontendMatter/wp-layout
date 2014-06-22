@@ -97,25 +97,42 @@
     builder.prototype.initComponents = function()
     {
         var builder = this;
-        this.$('#gallery-components').on('click', '.bcomponent', function(e)
+        this.$('#gallery-components').on('click', '.bcomponent', function(event)
         {
             var a = builder.getOverlayAttachment(),
+                a_component = a.is('[data-component]'),
+                a_template = builder.isTypeTemplate(a),
                 c = builder.overlay.is(':visible') ? a : builder.container,
-                e = builder.$(this).clone();
+                e = builder.$(this).clone(true),
+                o = e.data('options');
 
-            if (a.is('[data-component]'))
+            if (a_component && !a_template)
+                builder.$(c).after(e);
+            else
+                builder.$(c).append(e);
+
+            /* Open the options view right after attaching the component
+             * @todo: make this a configurable option
+
+            if (typeof o.form !== 'undefined' && o.form.length)
             {
-                if (!builder.isTypeTemplate(a))
+                e.one('apply.builder', function(applyEvent)
                 {
-                    builder.$(c).after(e);
-                    builder.applyComponent();
-                    return;
-                }
+                    builder.attachOverlay(builder.$(applyEvent.target));
+                    builder.toggleOptionsEditor();
+                });
+                builder.applyComponent();
             }
+            else
+            {
+                builder.applyComponent();
+                builder.attachOverlay();
+            }
+            */
 
-            builder.$(c).append(e);
             builder.applyComponent();
             builder.attachOverlay();
+            tb_remove();
         });
     };
 
@@ -925,10 +942,24 @@
         this.bindKeysNavigation();
         this.bindKeysCutCopyPaste();
         this.bindKeysEscape();
+        this.bindKeysEnter();
         this.bindKeysOptions();
         this.bindKeysRemove();
         this.bindKeysDuplicate();
         this.bindKeysGrid();
+    };
+
+    builder.prototype.bindKeysEnter = function()
+    {
+        var builder = this;
+        this.fw.key('enter', function(e, handler)
+        {
+            if (!builder.overlay.is(':visible'))
+                return;
+
+            e.preventDefault();
+            builder.toggleOptionsEditor();
+        });
     };
 
     builder.prototype.bindKeysCode = function()
@@ -1037,6 +1068,9 @@
         var builder = this;
         this.fw.key('escape', function(e, handler)
         {
+            if (builder.$('#TB_window').length)
+                return;
+
             if (builder.overlay.is(':visible'))
             {
                 e.preventDefault();
@@ -1270,11 +1304,33 @@
 
     builder.prototype.toggleOptionsEditor = function()
     {
-        var iframe_data = {
+        var t = this.getOverlayAttachment();
+
+        if (!t.is('[data-component]'))
+            return false;
+
+        var t_options = this.getOptions(t),
+            t_component_options = this.getComponentDefaultObject(t).options,
+            t_merged_options = this.$.extend({}, t_component_options, t_options),
+            iframe_data = {
                 action: 'builder_editor',
-                options: this.getOptions()
+                options: t_merged_options
             },
-            data = this.$.param(iframe_data);
+            data = this.$.param(iframe_data),
+            _tb_window = this.$("#TB_window");
+
+        if (_tb_window.length)
+        {
+            _tb_window.one('tb_unload', function()
+            {
+                setTimeout(function()
+                {
+                    tb_show('', ajaxurl + '?' + data + '#TB_iframe');
+                }, 100);
+            });
+            tb_remove();
+            return;
+        }
 
         tb_show('', ajaxurl + '?' + data + '#TB_iframe');
     };
@@ -1637,8 +1693,16 @@
                         e.attr(this.nodeName, this.nodeValue);
                 });
 
+                var t_events = t.data('events');
+
                 t.after(e).remove();
                 builder.makeSortables();
+
+                if (t_events && typeof t_events.apply !== 'undefined')
+                {
+                    e.one('apply.builder', t.data('events').apply[0].handler);
+                    e.trigger('apply.builder');
+                }
 
                 if (save)
                     builder.changeComponent(false, e);
@@ -1652,27 +1716,35 @@
     builder.prototype.getComponentDefaultViewOptions = function(t)
     {
         var component = t.attr('data-component'),
-            options = this.getComponentOptions(component),
-            options_view_default = {
+            options_view_blank = {
                 'id': component,
                 'label': component,
                 'description': 'no description available',
                 'icon': 'fa-2x fa-windows'
             },
+            options_view_default = this.getComponentDefaultObject(t).component;
+
+        return this.$.extend({}, options_view_blank, options_view_default);
+    };
+
+    builder.prototype.getComponentDefaultObject = function(t)
+    {
+        var component = t.attr('data-component'),
+            options = this.getComponentOptions(component),
             component_id = options ? options.view.id : component,
             components_scope = angular.element('#gallery-components').scope(),
             components_list = components_scope.components,
-            options_view = {};
+            component_object = {};
 
         this.$.each(components_list, function(ck,cv){
             var view = cv.views.filter(function(o){ return o.component.id == component_id });
             if (view.length) {
-                options_view = view[0].component;
+                component_object = view[0];
                 return false;
             }
         });
 
-        return this.$.extend({}, options_view_default, options_view);
+        return component_object;
     };
 
     builder.prototype.isGuid = function(id, prefix)

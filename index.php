@@ -43,7 +43,7 @@ add_action('plugins_loaded', function() use ($libraries)
     // Initialize libraries
     foreach ($libraries as $library)
         forward_static_call_array([ __NAMESPACE__ . '\\' . $library, 'init' ], []);
-}, 11);
+}, 20);
 
 // Plugin activation
 register_activation_hook(__FILE__, function() use ($libraries)
