@@ -1,6 +1,6 @@
 <?php namespace Mosaicpro\WP\Plugins\Layout;
 
-use Mosaicpro\Grid\Grid;
+use Mosaicpro\HtmlGenerators\Grid\Grid;
 use Mosaicpro\WpCore\Shortcode;
 
 /**

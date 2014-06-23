@@ -1,8 +1,8 @@
 <?php namespace Mosaicpro\WP\Plugins\Layout;
 
-use Mosaicpro\Button\Button;
-use Mosaicpro\ButtonGroup\ButtonGroup;
-use Mosaicpro\ButtonGroup\ButtonToolbar;
+use Mosaicpro\HtmlGenerators\Button\Button;
+use Mosaicpro\HtmlGenerators\ButtonGroup\ButtonGroup;
+use Mosaicpro\HtmlGenerators\ButtonGroup\ButtonToolbar;
 use Mosaicpro\WpCore\FormBuilder;
 use Mosaicpro\WpCore\MetaBox;
 use Mosaicpro\WpCore\PluginGeneric;
