@@ -149,8 +149,6 @@ class Layout extends PluginGeneric
         add_action('init', function()
         {
             $shortcodes = [
-                'Grid_Row',
-                'Grid_Column',
                 'Post_Title',
                 'Post_Content'
             ];
