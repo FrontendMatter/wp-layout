@@ -296,6 +296,51 @@ function AppCtrl($scope, $http, $timeout)
 
 function ComponentsCtrl($scope)
 {
+    $scope.append = function(data)
+    {
+        $scope.components.push(data);
+    }
+
+    $scope.prepend = function(data)
+    {
+        $scope.components.unshift(data);
+    }
+
+    $scope.after = function(data, key, id)
+    {
+        if (typeof data != 'object')
+            return false;
+
+        if (typeof id != 'undefined')
+        {
+            if (typeof data.component != 'object')
+                return false;
+        }
+
+        jQuery.each($scope.components, function(k,v)
+        {
+           if (v.key != key)
+               return true;
+
+           if (typeof id == 'undefined')
+           {
+               $scope.components.splice(k+1, 0, data);
+               return false;
+           }
+
+           jQuery.each(v.views, function(view_k, view_v)
+           {
+                if (view_v.component.id == id)
+                {
+                    $scope.components[k].views.splice(view_k+1, 0, data);
+                    return false;
+                }
+           });
+        });
+
+        return true;
+    }
+
     $scope.components = [
         {
             "key": "Grid",
@@ -330,51 +375,6 @@ function ComponentsCtrl($scope)
                         "label": "4 columns",
                         "description": "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Deserunt, ipsum?",
                         "icon": "fa-2x fa-th-large"
-                    }
-                }
-            ]
-        },
-        {
-            "key": "Sidebars",
-            "views": [
-                {
-                    "component": {
-                        "id": "register-sidebar",
-                        "label": "New Widget Area",
-                        "description": "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Deserunt, ipsum?"
-                    },
-                    "options": {
-                        "id": "1",
-                        "type": "shortcode",
-                        "shortcode_id": "register_sidebar",
-                        "shortcode_atts": ["id"],
-                        "form": [
-                            {
-                                "name": "id",
-                                "label": "Sidebar ID",
-                                "type": "input"
-                            }
-                        ]
-                    }
-                },
-                {
-                    "component": {
-                        "id": "display-sidebar",
-                        "label": "Existing Sidebar",
-                        "description": "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Deserunt, ipsum?"
-                    },
-                    "options": {
-                        "id": "my-sidebar",
-                        "type": "shortcode",
-                        "shortcode_atts": ["id"],
-                        "shortcode_id": "display_sidebar",
-                        "form": [
-                            {
-                                "name": "id",
-                                "label": "Sidebar ID",
-                                "type": "input"
-                            }
-                        ]
                     }
                 }
             ]
@@ -431,6 +431,5 @@ function ComponentsCtrl($scope)
         }
     ];
 
-    // { "key": "yey", "value": [{ "key": "blah", "value": "blah", "views": {"php.ini": "ini"}}] }
-    // [{"key":"common","value": [{ "key":"forms", "value": [{"key":"editors","value":[{"key":"wysihtml5","value":"wysihtml5","views":{"php.wysihtml5":"wysihtml5"}}]}
+    angular.element(document).trigger('loaded.ComponentsCtrl.builder');
 }
