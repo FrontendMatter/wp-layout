@@ -130,7 +130,7 @@
             }
             */
 
-            builder.applyComponent();
+            builder.applyComponent(true);
             builder.attachOverlay();
             tb_remove();
         });
@@ -353,7 +353,7 @@
                 return;
         }
         else if (typeof t == 'undefined')
-            var t = this.getOverlayAttachment();
+            t = this.getOverlayAttachment();
 
         if (!t.length)
             return;
@@ -464,7 +464,7 @@
     {
         t.data('options', o);
         this.changeComponent(false, t);
-        this.saveComponent();
+        this.saveComponent(typeof o.preview != 'undefined');
         return o;
     };
 
@@ -1146,7 +1146,7 @@
                 clone = type == 'x' ? content : content.clone(true);
 
             if (type == 'x')
-                builder.changeComponent(false, t.parent());
+                builder.changeComponent(false, content);
 
             t.append(clone);
             builder.attachClone(clone, type == 'c');
@@ -1538,7 +1538,10 @@
                         o.template = template;
 
                     if (options)
+                    {
+                        if (typeof options.preview != 'undefined') options.preview = true;
                         o.options = options;
+                    }
 
                     builder.ngSaveComponent(o);
                 }
@@ -1626,6 +1629,8 @@
             return !builder.$(this).data('apply');
         });
 
+        this.hideOverlay();
+
         if (!components.length)
             return;
 
@@ -1633,7 +1638,8 @@
         {
             var t = builder.$(this),
                 component = t.data('component'),
-                options = builder.getOptions(t);
+                options = builder.$.extend({}, builder.getOptions(t), builder.getComponentOptions(component));
+                //options = builder.getOptions(t);
 
             if (component.indexOf('grid-') >= 0)
             {
@@ -1672,20 +1678,29 @@
                     }),
 
                     e_html =
-                        typeof options.type !== 'undefined' && options.type == 'template' ? t.html() :
-                        '<div class="media">'
-                            + '<span class="fa fa-fw pull-left ' + e_options_view.icon + '"></span>'
-                            + '<div class="media-body">'
-                                + '<h5>' + e_options_view.label + '</h5>'
-                                + '<p class="text-muted"><small>' + e_options_view.description + '</small></p>'
-                            + '</div>'
-                        + '</div>';
+                        typeof options.type !== 'undefined' && options.type == 'template' ?
+                            t.html()
+                            :
+                            (typeof options.preview == 'string' ? options.preview :
+                            '<div class="media">'
+                                + '<span class="fa fa-fw pull-left ' + e_options_view.icon + '"></span>'
+                                + '<div class="media-body">'
+                                    + '<h5>' + e_options_view.label + '</h5>'
+                                    + '<p class="text-muted"><small>' + e_options_view.description + '</small></p>'
+                                + '</div>'
+                            + '</div>');
 
-                e.addClass('component')
-                    .attr('data-component', t.attr('data-component'))
+                if (typeof options.preview == 'string')
+                    e = builder.$(options.preview);
+                else if (typeof options.preview == 'undefined')
+                    e.html(e_html);
+
+                e.addClass('component').attr('data-component', t.attr('data-component'))
                     .data('options', e_options)
-                    .data('apply', true)
-                    .html(e_html);
+                    .data('apply', true);
+
+                if (typeof options.type !== 'undefined' && options.type == 'template')
+                    e.addClass('template');
 
                 builder.$(t.get(0).attributes).each(function()
                 {
@@ -1694,9 +1709,7 @@
                 });
 
                 var t_events = t.data('events');
-
                 t.after(e).remove();
-                builder.makeSortables();
 
                 if (t_events && typeof t_events.apply !== 'undefined')
                 {
@@ -1709,8 +1722,22 @@
             }
         });
 
+        var templates = this.$('[data-component]', this.container).filter(function(){
+            return !builder.$(this).data('apply');
+        });
+
+        if (templates.length)
+            this.applyComponent(save);
+
+        builder.makeSortables();
+
+        var templates_preview = this.$('[data-component]', this.container).filter(function(){
+                return typeof builder.getOptions(builder.$(this)).preview != 'undefined';
+            }),
+            reload = templates_preview.length > 0;
+
         if (save)
-            builder.saveComponent();
+            builder.saveComponent(reload);
     };
 
     builder.prototype.getComponentDefaultViewOptions = function(t)

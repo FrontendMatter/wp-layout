@@ -11,6 +11,9 @@
   margin: 12px -12px;
 }
 #mp-layout-builder .component {
+  margin: 10px;
+}
+#mp-layout-builder div.component {
   min-height: 46px;
   line-height: 46px;
   cursor: pointer;
@@ -22,12 +25,15 @@
   -moz-border-radius: 5px;
   border-radius: 5px;
 }
-#mp-layout-builder .component:hover {
+#mp-layout-builder div.component:hover {
   background: #fafafa;
 }
-#mp-layout-builder .component > .media > span.fa.pull-left {
+#mp-layout-builder div.component > .media > span.fa.pull-left {
   margin-top: 10px;
   margin-left: 10px;
+}
+#mp-layout-builder div.component.template {
+  background: #fff;
 }
 #mp-layout-builder .row {
   border: 1px dashed #E8E8E8;

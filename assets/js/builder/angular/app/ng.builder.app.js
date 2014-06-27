@@ -156,6 +156,7 @@ function AppCtrl($scope, $http, $timeout)
                 }
 
                 $scope.page.template_raw = response.data;
+                if ($scope.page.reload) $scope.parseTemplate();
             })
             .error(function(data, status)
             {
@@ -171,7 +172,7 @@ function AppCtrl($scope, $http, $timeout)
             $scope.page.loading = false;
         }
 
-        if (newValue !== oldValue && newValue !== '')
+        if ((newValue !== oldValue && newValue !== ''))
             $scope.parseTemplate();
     });
 
@@ -203,6 +204,7 @@ function AppCtrl($scope, $http, $timeout)
 
                 $scope.page.template = response.data.content;
                 $scope.page.options = response.data.options;
+                $scope.page.reload = false;
             })
             .error(function(data, status)
             {
@@ -283,7 +285,10 @@ function AppCtrl($scope, $http, $timeout)
                 $scope.page.saving = false;
 
                 if (saveData.reload === true)
+                {
+                    $scope.page.reload = true;
                     $scope.getTemplate($scope.page.id);
+                }
             })
             .error(function(data, status)
             {
@@ -425,6 +430,33 @@ function ComponentsCtrl($scope)
                                 "values": { 1 : 'Enable', 0: 'Disable' }
                             }
                         ]
+                    }
+                }
+            ]
+        },
+        {
+            "key": "HTML Templates",
+            "views": [
+                {
+                    "component": {
+                        "id": "new-template",
+                        "label": "New HTML Template",
+                        "description": "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Deserunt, ipsum?",
+                        "icon": "fa-2x fa-html5"
+                    },
+                    "options": {
+                        "type": "template"
+                    }
+                },
+                {
+                    "component": {
+                        "id": "load-template",
+                        "label": "Existing HTML Template",
+                        "description": "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Deserunt, ipsum?",
+                        "icon": "fa-2x fa-html5"
+                    },
+                    "options": {
+                        "type": "template"
                     }
                 }
             ]

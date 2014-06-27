@@ -476,6 +476,10 @@ class Layout extends PluginGeneric
                                     FormBuilder::$formType($formControl['name'], $formControl['label'], $options[$formControl['name']]);
                                     break;
 
+                                case 'select':
+                                    FormBuilder::$formType($formControl['name'], $formControl['label'], $options[$formControl['name']], $formControl['values']);
+                                    break;
+
                                 case 'select_range':
                                     FormBuilder::$formType($formControl['name'], $formControl['label'], $options[$formControl['name']], $formControl['range'], $formControl['format']);
                                     break;
@@ -636,7 +640,7 @@ class Layout extends PluginGeneric
 
                 if ($componentHasTags)
                 {
-                    $parseTemplateTemp = $this->parseTemplateTags($componentContentTemp);
+                    $parseTemplateTemp = $this->parseTemplateTags($componentContentTemp, $builder_markup);
                     $componentContentTemp = $parseTemplateTemp['content'];
                     $componentOptions = array_merge($componentOptions, $parseTemplateTemp['options']);
                 }
@@ -644,13 +648,23 @@ class Layout extends PluginGeneric
 
             if ($builder_markup)
             {
+                $preview = isset($componentOptions[$template_tag]['preview']) && $componentOptions[$template_tag]['preview'] !== false;
+                if ($preview)
+                {
+                    if ($tag_db_options['type'] == 'shortcode')
+                    {
+                        $componentContentPreview = do_shortcode($this->getComponentShortcode($tag_db_options));
+                        $componentOptions[$template_tag]['preview'] = $componentContentPreview;
+                    }
+                }
+
                 $componentContent = '<div data-component="' . $template_tag . '"';
                 if ($tag_options) $componentContent .= ' data-options="' . $tag_options_json . '"';
                 $componentContent .= '>' . $componentContentTemp . '</div>';
             }
             else
             {
-                $componentContent  = $componentContentTemp;
+                $componentContent = $componentContentTemp;
                 if ($tag_db_options['type'] == 'shortcode')
                     $componentContent = $this->getComponentShortcode($tag_db_options);
             }
@@ -672,7 +686,7 @@ class Layout extends PluginGeneric
         {
             foreach($options['shortcode_atts'] as $shortcode_atts_field)
             {
-                if (!empty($options[$shortcode_atts_field]) || isset($options[$shortcode_atts_field]) && (int) $options[$shortcode_atts_field] == 0)
+                if (!empty($options[$shortcode_atts_field]) || (isset($options[$shortcode_atts_field]) && (int) $options[$shortcode_atts_field] == 0))
                     $shortcode_atts .= ' ' . $shortcode_atts_field . '="' . $options[$shortcode_atts_field] . '"';
             }
         }
