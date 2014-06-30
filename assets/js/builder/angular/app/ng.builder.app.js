@@ -398,7 +398,9 @@ function ComponentsCtrl($scope)
                         "type": "shortcode",
                         "shortcode_id": "post_title",
                         "shortcode_atts": ["size"],
-                        "size": "h1",
+                        "data": {
+                            "size": "h1"
+                        },
                         "form": [
                             {
                                 "name": "size",
@@ -421,7 +423,9 @@ function ComponentsCtrl($scope)
                         "type": "shortcode",
                         "shortcode_id": "post_content",
                         "shortcode_atts": ["thumbnail"],
-                        "thumbnail": 1,
+                        "data": {
+                            "thumbnail": 1
+                        },
                         "form": [
                             {
                                 "name": "thumbnail",

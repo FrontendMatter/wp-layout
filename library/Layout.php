@@ -1,5 +1,6 @@
 <?php namespace Mosaicpro\WP\Plugins\Layout;
 
+use Mosaicpro\HtmlGenerators\Accordion\Accordion;
 use Mosaicpro\HtmlGenerators\Button\Button;
 use Mosaicpro\HtmlGenerators\ButtonGroup\ButtonGroup;
 use Mosaicpro\HtmlGenerators\ButtonGroup\ButtonToolbar;
@@ -449,6 +450,7 @@ class Layout extends PluginGeneric
         {
             $options = $_REQUEST['options'];
             $form = isset($options) && !empty($options['form']) ? $options['form'] : false;
+            $panels = isset($options) && !empty($options['panels']) ? $options['panels'] : false;
 
             wp_enqueue_script('ajax_options_editor', plugin_dir_url(__DIR__) . 'assets/js/builder/lib/ajax_options_editor.js', ['jquery'], '1.0', true);
 
@@ -458,51 +460,81 @@ class Layout extends PluginGeneric
                 <h3>Edit Options</h3>
             </div>
             <hr/>
-            <form action="" method="post">
-                <div class="col-md-12">
+            <div class="col-md-12">
 
-                    <?php
-                    if ($form !== false)
-                    {
-                        foreach($form as $formControl)
-                        {
-
-                            $formType = isset($formControl['type']) ? $formControl['type'] : "input";
-                            switch($formType)
-                            {
-                                default:
-                                case 'input':
-                                case 'textarea':
-                                    FormBuilder::$formType($formControl['name'], $formControl['label'], $options[$formControl['name']]);
-                                    break;
-
-                                case 'select':
-                                    FormBuilder::$formType($formControl['name'], $formControl['label'], $options[$formControl['name']], $formControl['values']);
-                                    break;
-
-                                case 'select_range':
-                                    FormBuilder::$formType($formControl['name'], $formControl['label'], $options[$formControl['name']], $formControl['range'], $formControl['format']);
-                                    break;
-
-                                case 'checkbox_buttons':
-                                case 'radio_buttons':
-                                    FormBuilder::$formType($formControl['name'], $formControl['label'], $options[$formControl['name']], $formControl['values']);
-                                    break;
-                            }
-
-                        }
-                    }
+                <?php
+                if ($form)
+                {
                     ?>
+                    <form action="" method="post" class="options-form">
+                    <?php
+                    foreach($form as $formControl)
+                        $this->makeFormControl($formControl, $options['data'][$formControl['name']]);
+                    ?>
+                    </form>
+                    <?php
+                }
 
-                    <hr/>
-                    <button type="submit" class="btn btn-success">Save</button>
+                if ($panels)
+                {
+                    echo "<hr/>";
+                    $accordion = Accordion::make();
+                    foreach ($panels as $panel)
+                    {
+                        $panel_form = isset($panel['form']) && !empty($panel['form']) ? $panel['form'] : false;
+                        if (!$panel_form) continue;
 
-                </div>
-            </form>
+                        ob_start();
+                        ?>
+                        <form action="" method="post" class="options-panel-form">
+                        <?php
+                        foreach ($panel_form as $panel_form_control)
+                            $this->makeFormControl($panel_form_control, $panel['data'][$panel_form_control['name']]);
+                        ?>
+                        </form>
+                        <?php
+                        $accordion_body = ob_get_clean();
+                        $accordion_heading = !empty($panel['label']) ? $panel['label'] : $panel['method'];
+                        $accordion->addAccordion($accordion_heading, $accordion_body);
+                    }
+                    echo $accordion->addClass('options-panels-wrapper');
+                }
+                ?>
+
+                <hr/>
+                <button type="button" class="btn btn-success btn-options-submit">Save</button>
+
+            </div>
             <?php
             ThickBox::getFooter();
             die();
         });
+    }
+
+    private function makeFormControl($formControl, $value)
+    {
+        $formType = isset($formControl['type']) ? $formControl['type'] : "input";
+        switch($formType)
+        {
+            default:
+            case 'input':
+            case 'textarea':
+                FormBuilder::$formType($formControl['name'], $formControl['label'], $value);
+                break;
+
+            case 'select':
+                FormBuilder::$formType($formControl['name'], $formControl['label'], $value, $formControl['values']);
+                break;
+
+            case 'select_range':
+                FormBuilder::$formType($formControl['name'], $formControl['label'], $value, $formControl['range'], $formControl['format']);
+                break;
+
+            case 'checkbox_buttons':
+            case 'radio_buttons':
+                FormBuilder::$formType($formControl['name'], $formControl['label'], $value, $formControl['values']);
+                break;
+        }
     }
 
     /**
@@ -651,11 +683,9 @@ class Layout extends PluginGeneric
                 $preview = isset($componentOptions[$template_tag]['preview']) && $componentOptions[$template_tag]['preview'] !== false;
                 if ($preview)
                 {
-                    if ($tag_db_options['type'] == 'shortcode')
-                    {
-                        $componentContentPreview = do_shortcode($this->getComponentShortcode($tag_db_options));
+                    $componentContentPreview = $this->getComponentPreview($tag_db_options, $tag_db_options['type']);
+                    if ($componentContentPreview)
                         $componentOptions[$template_tag]['preview'] = $componentContentPreview;
-                    }
                 }
 
                 $componentContent = '<div data-component="' . $template_tag . '"';
@@ -667,12 +697,72 @@ class Layout extends PluginGeneric
                 $componentContent = $componentContentTemp;
                 if ($tag_db_options['type'] == 'shortcode')
                     $componentContent = $this->getComponentShortcode($tag_db_options);
+
+                if ($tag_db_options['type'] == 'generator')
+                    $componentContent = $this->getComponentPreview($tag_db_options, $tag_db_options['type']);
+
+                if (!$componentContent)
+                    $componentContent = $componentContentTemp;
             }
 
             $content = str_replace($tag_replace, $componentContent, $content);
         }
 
         return ['content' => $content, 'options' => $componentOptions];
+    }
+
+    private function getComponentPreview($options, $type)
+    {
+        switch ($type)
+        {
+            default:
+                return false;
+                break;
+
+            case 'generator':
+                $generator_id = $options['generator_id'];
+                $generator = $generator_id::make();
+
+                $after = isset($options['after']) ? $options['after'] : false;
+                if ($after)
+                {
+                    foreach ($after as $afterKey)
+                    {
+                        $afterData = $options['data'][$afterKey];
+                        if (is_numeric($afterData)) $afterData = (boolean) $afterData;
+                        call_user_func_array([$generator, $afterKey], [$afterData]);
+                    }
+                }
+
+                foreach ($options['panels'] as $panel)
+                {
+                    $method = $panel['method'];
+                    $atts = $panel['atts'];
+                    $params = [];
+                    foreach ($atts as $att)
+                        $params[$att] = $panel['data'][$att];
+
+                    call_user_func_array([$generator, $method], $params);
+
+                    $after = isset($panel['after']) ? $panel['after'] : false;
+                    if ($after)
+                    {
+                        foreach ($after as $afterKey)
+                        {
+                            $afterData = $panel['data'][$afterKey];
+                            if (is_numeric($afterData)) $afterData = (boolean) $afterData;
+                            call_user_func_array([$generator, $afterKey], [$afterData]);
+                        }
+                    }
+                }
+
+                return $generator->__toString();
+                break;
+
+            case 'shortcode':
+                return do_shortcode($this->getComponentShortcode($options));
+                break;
+        }
     }
 
     private function getComponentShortcode($options)
@@ -686,8 +776,8 @@ class Layout extends PluginGeneric
         {
             foreach($options['shortcode_atts'] as $shortcode_atts_field)
             {
-                if (!empty($options[$shortcode_atts_field]) || (isset($options[$shortcode_atts_field]) && (int) $options[$shortcode_atts_field] == 0))
-                    $shortcode_atts .= ' ' . $shortcode_atts_field . '="' . $options[$shortcode_atts_field] . '"';
+                if (!empty($options['data'][$shortcode_atts_field]) || (isset($options['data'][$shortcode_atts_field]) && (int) $options['data'][$shortcode_atts_field] == 0))
+                    $shortcode_atts .= ' ' . $shortcode_atts_field . '="' . $options['data'][$shortcode_atts_field] . '"';
             }
         }
 

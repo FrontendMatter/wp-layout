@@ -468,6 +468,12 @@
         return o;
     };
 
+    builder.prototype.resetComponentOptions = function()
+    {
+        var t = this.getOverlayAttachment();
+        this.setOptions(t, this.getComponentDefaultObject(t).options);
+    };
+
     builder.prototype.toggleOverlayOptions = function(options)
     {
         var eo = this.overlay.find('#overlay-edit-options');
