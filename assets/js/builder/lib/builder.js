@@ -7,6 +7,7 @@
             fw: window,
             contentDocument: document,
             document: 'body',
+            modal: 'thickbox',
             container: '#mp-layout-builder',
             overlay_select: '#overlay',
             overlay_hover: '#overlay-hover'
@@ -23,6 +24,8 @@
 
         this.container = options.container;
         this.document = options.document;
+        this.modal = options.modal;
+        this.modals = {};
         this.$ = this.fw.jQuery;
 
         // angular app
@@ -60,6 +63,7 @@
 
     builder.prototype.init = function()
     {
+        this.initModals();
         this.initJQExpr();
         this.initOverlays();
         this.makeSortables();
@@ -67,6 +71,69 @@
         this.bindKeys();
         this.initComponents();
         this.initCodeEditor();
+
+        this.$(document).trigger('init.builder', [ this ]);
+    };
+
+    builder.prototype.initModals = function()
+    {
+        var builder = this;
+        switch (this.modal)
+        {
+            default: break;
+            case 'bootstrap':
+                this.modals.components = this.$('#Modal_builderComponents');
+                this.modals.options = this.$('#Modal_builderOptions');
+
+                this.modals.components.on('hide.bs.modal', function()
+                {
+                    builder.$('[name="displayComponents"]').parent().click();
+                });
+                this.modals.components.attr('data-backdrop', true);
+
+                builder.$('body').on('hidden.bs.modal', this.modals.options.selector, function(e)
+                {
+                    builder.$(e.target).removeData("bs.modal").find(".modal-content").empty();
+                });
+                break;
+
+            case 'thickbox':
+                builder.$('body').on("tb_unload", "#TB_window", function(e)
+                {
+                    builder.$('[name="displayComponents"]').parent().click();
+                });
+                break;
+        }
+    };
+
+    builder.prototype.openComponentsModal = function()
+    {
+        switch (this.modal)
+        {
+            default: break;
+            case 'thickbox':
+                tb_show('', '#TB_inline?width=600&height=550&inlineId=builder-components');
+                break;
+
+            case 'bootstrap':
+                this.modals.components.modal('show');
+                break;
+        }
+    };
+
+    builder.prototype.closeComponentsModal = function()
+    {
+        switch (this.modal)
+        {
+            default: break;
+            case 'thickbox':
+                tb_remove();
+                break;
+
+            case 'bootstrap':
+                this.modals.components.modal('hide');
+                break;
+        }
     };
 
     builder.prototype.initCodeEditor = function()
@@ -132,7 +199,7 @@
 
             builder.applyComponent(true);
             builder.attachOverlay();
-            tb_remove();
+            builder.closeComponentsModal();
         });
     };
 
@@ -1322,23 +1389,48 @@
                 action: 'builder_editor',
                 options: t_merged_options
             },
-            data = this.$.param(iframe_data),
-            _tb_window = this.$("#TB_window");
+            data = this.$.param(iframe_data);
 
-        if (_tb_window.length)
+        this.openOptionsModal(data);
+    };
+
+    builder.prototype.openOptionsModal = function(data)
+    {
+        switch (this.modal)
         {
-            _tb_window.one('tb_unload', function()
-            {
-                setTimeout(function()
+            default: break;
+            case 'thickbox':
+                var _tb_window = this.$("#TB_window");
+                if (_tb_window.length)
                 {
-                    tb_show('', ajaxurl + '?' + data + '#TB_iframe');
-                }, 100);
-            });
-            tb_remove();
-            return;
-        }
+                    _tb_window.one('tb_unload', function()
+                    {
+                        setTimeout(function()
+                        {
+                            tb_show('', ajaxurl + '?' + data + '#TB_iframe');
+                        }, 100);
+                    });
+                    tb_remove();
+                    return;
+                }
 
-        tb_show('', ajaxurl + '?' + data + '#TB_iframe');
+                tb_show('', ajaxurl + '?' + data + '#TB_iframe');
+                break;
+
+            case 'bootstrap':
+                this.modals.options.data('remote', ajaxurl + '?' + data).modal('show');
+                break;
+        }
+    };
+
+    builder.prototype.closeOptionsModal = function()
+    {
+        switch (this.modal)
+        {
+            default: break;
+            case 'thickbox': tb_remove(); break;
+            case 'bootstrap': this.modals.options.modal('hide');
+        }
     };
 
     builder.prototype.updateBreadcrumb = function()
@@ -1697,7 +1789,10 @@
                             + '</div>');
 
                 if (typeof options.preview == 'string')
+                {
                     e = builder.$(options.preview);
+                    if (e.length > 1) e = builder.$('<div></div>').html(e);
+                }
                 else if (typeof options.preview == 'undefined')
                     e.html(e_html);
 

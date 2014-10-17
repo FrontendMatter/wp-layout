@@ -210,40 +210,33 @@ div[class*="col-"]:empty {
 [contenteditable="true"] {
   border: 1px dashed #222222 !important;
 }
-/*
-#builder-menu-bottom {
-  background: @inverseColor;
+.component .nav-tabs {
+  margin-bottom: 0;
+}
+.component .nav-tabs + .tab-content {
+  padding: 15px;
+  background: #fff;
+}
+#Modal_builderOptions .modal-content {
+  padding: 15px;
+}
+body.modal-open .modal-backdrop {
   position: fixed;
+  top: 0;
+  right: 0;
   bottom: 0;
   left: 0;
-  right: 0;
-  height: 30px;
-  #builder-breadcrumb {
-    -webkit-box-shadow: none;
-    -moz-box-shadow: none;
-    box-shadow: none;
-    border-bottom: none;
-    margin: 0;
-    height: 30px;
-    line-height: 30px;
-    display: inline-block;
-    &, * { color: #fff; text-shadow: none; }
-    li {
-      height: 30px;
-      line-height: 30px;
-      &.divider {
-        border-right: none;
-        border-left: 1px solid #2c2c2c;
-      }
-    }
-    a { cursor: pointer; }
-  }
-  .btn-group-xs {
-    float: right;
-    margin: 4px 5px 0 0;
-  }
+  z-index: 100000;
+  background-color: #fff;
 }
-*/
+body.modal-open .modal-backdrop.fade {
+  opacity: 0;
+  filter: alpha(opacity=0);
+}
+body.modal-open .modal-backdrop.in {
+  opacity: 0.9;
+  filter: alpha(opacity=90);
+}
 #builder-editor .CodeMirror .cm-mustache {
   color: #d9534f;
   font-weight: bold;

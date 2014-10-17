@@ -121,14 +121,7 @@ function AppCtrl($scope, $http, $timeout)
     {
         if (n!==o)
         {
-            if (n==true)
-            {
-                tb_show('', '#TB_inline?width=600&height=550&inlineId=builder-components');
-                jQuery('#TB_window').on("tb_unload", function(e)
-                {
-                    jQuery('[name="displayComponents"]').parent().click();
-                });
-            }
+            if (n==true) builder_instance.openComponentsModal();
         }
     });
 
@@ -205,6 +198,9 @@ function AppCtrl($scope, $http, $timeout)
                 $scope.page.template = response.data.content;
                 $scope.page.options = response.data.options;
                 $scope.page.reload = false;
+
+                builder_instance.$(builder_instance.container).html($scope.page.template);
+                builder_instance.applyComponent(false);
             })
             .error(function(data, status)
             {
@@ -213,15 +209,6 @@ function AppCtrl($scope, $http, $timeout)
                 $scope.status = status;
             });
     };
-
-    $scope.$watch('page.template', function(newValue, oldValue)
-    {
-        if (newValue !== oldValue)
-        {
-            builder_instance.$(builder_instance.container).html(newValue);
-            builder_instance.applyComponent(false);
-        }
-    });
 
     $scope.saveComponentRequest = function(saveData)
     {
@@ -301,9 +288,24 @@ function AppCtrl($scope, $http, $timeout)
 
 function ComponentsCtrl($scope)
 {
-    $scope.append = function(data)
+    $scope.append = function(data, key)
     {
-        $scope.components.push(data);
+        if (typeof key == 'undefined')
+        {
+            $scope.components.push(data);
+            return true;
+        }
+
+        jQuery.each($scope.components, function(k,v)
+        {
+            if (v.key != key)
+                return true;
+
+            $scope.components[k].views.push(data);
+            return false;
+        });
+
+        return true;
     }
 
     $scope.prepend = function(data)

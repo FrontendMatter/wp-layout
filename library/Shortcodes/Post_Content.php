@@ -25,7 +25,7 @@ class Post_Content_Shortcode extends Shortcode
             $content = do_shortcode(get_the_content());
 
             if ((boolean) intval($atts['thumbnail']) !== false)
-                $content = get_the_post_thumbnail(null, [125]) . $content;
+                $content = get_the_post_thumbnail(null, [125, 'auto']) . $content;
 
             return apply_filters( 'the_content', $content );
         });

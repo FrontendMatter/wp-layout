@@ -4,6 +4,7 @@ use Mosaicpro\HtmlGenerators\Accordion\Accordion;
 use Mosaicpro\HtmlGenerators\Button\Button;
 use Mosaicpro\HtmlGenerators\ButtonGroup\ButtonGroup;
 use Mosaicpro\HtmlGenerators\ButtonGroup\ButtonToolbar;
+use Mosaicpro\HtmlGenerators\Modal\Modal;
 use Mosaicpro\WpCore\FormBuilder;
 use Mosaicpro\WpCore\MetaBox;
 use Mosaicpro\WpCore\PluginGeneric;
@@ -21,6 +22,8 @@ class Layout extends PluginGeneric
      * @var
      */
     protected static $instance;
+
+    protected $modal = 'bootstrap';
 
     /**
      * Initialize the plugin
@@ -218,6 +221,8 @@ class Layout extends PluginGeneric
 
             // jQuery UI Droppable
             wp_enqueue_script('jquery-ui-droppable');
+
+            wp_enqueue_script('ajax_options_editor', plugin_dir_url(__DIR__) . 'assets/js/builder/lib/ajax_options_editor.js', ['jquery', 'mp-builder-init'], '1.0', true);
         });
     }
 
@@ -282,7 +287,18 @@ class Layout extends PluginGeneric
                 <tree collection="components" search="search"></tree>
             </div>';
 
-        $iframe = ThickBox::register_inline('builder-components', false, $content)->render();
+        switch ($this->modal)
+        {
+            default:
+            case 'bootstrap':
+                $iframe = Modal::builderComponents()->isFade()->isLg()->addTitle('Components')->addBody($content);
+                $iframe .= Modal::builderOptions()->isFade()->isLg()->addTitle('Options')->addBody('');
+                break;
+
+            case 'thickbox':
+                $iframe = ThickBox::register_inline('builder-components', false, $content)->render();
+                break;
+        }
         return $iframe;
     }
 
@@ -452,61 +468,73 @@ class Layout extends PluginGeneric
             $form = isset($options) && !empty($options['form']) ? $options['form'] : false;
             $panels = isset($options) && !empty($options['panels']) ? $options['panels'] : false;
 
-            wp_enqueue_script('ajax_options_editor', plugin_dir_url(__DIR__) . 'assets/js/builder/lib/ajax_options_editor.js', ['jquery'], '1.0', true);
-
-            ThickBox::getHeader();
+            if ($this->modal == 'thickbox')
+            {
+                wp_enqueue_script('ajax_options_editor', plugin_dir_url(__DIR__) . 'assets/js/builder/lib/ajax_options_editor.js', ['jquery'], '1.0', true);
+                ThickBox::getHeader();
+            }
             ?>
-            <div class="col-md-12">
-                <h3>Edit Options</h3>
+
+            <?php if ($this->modal == 'bootstrap'): ?>
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="myModalLabel">Options</h4>
             </div>
-            <hr/>
-            <div class="col-md-12">
+            <div class="modal-body">
+            <?php endif; ?>
 
-                <?php
-                if ($form)
-                {
-                    ?>
-                    <form action="" method="post" class="options-form">
-                    <?php
-                    foreach($form as $formControl)
-                        $this->makeFormControl($formControl, $options['data'][$formControl['name']]);
-                    ?>
-                    </form>
-                    <?php
-                }
+            <?php if ($this->modal == 'thickbox'): ?>
+            <h3>Edit Options</h3>
+            <?php endif; ?>
 
-                if ($panels)
-                {
-                    echo "<hr/>";
-                    $accordion = Accordion::make();
-                    foreach ($panels as $panel)
-                    {
-                        $panel_form = isset($panel['form']) && !empty($panel['form']) ? $panel['form'] : false;
-                        if (!$panel_form) continue;
-
-                        ob_start();
-                        ?>
-                        <form action="" method="post" class="options-panel-form">
-                        <?php
-                        foreach ($panel_form as $panel_form_control)
-                            $this->makeFormControl($panel_form_control, $panel['data'][$panel_form_control['name']]);
-                        ?>
-                        </form>
-                        <?php
-                        $accordion_body = ob_get_clean();
-                        $accordion_heading = !empty($panel['label']) ? $panel['label'] : $panel['method'];
-                        $accordion->addAccordion($accordion_heading, $accordion_body);
-                    }
-                    echo $accordion->addClass('options-panels-wrapper');
-                }
-                ?>
-
-                <hr/>
-                <button type="button" class="btn btn-success btn-options-submit">Save</button>
-
-            </div>
             <?php
-            ThickBox::getFooter();
+            if ($form)
+            {
+                ?>
+                <div class="options-form">
+                <?php
+                foreach($form as $formControl)
+                    $this->makeFormControl($formControl, $options['data'][$formControl['name']]);
+                ?>
+                </div>
+                <?php
+            }
+
+            if ($panels)
+            {
+                echo "<hr/>";
+                $accordion = Accordion::make();
+                foreach ($panels as $panel)
+                {
+                    $panel_form = isset($panel['form']) && !empty($panel['form']) ? $panel['form'] : false;
+                    if (!$panel_form) continue;
+
+                    ob_start();
+                    ?>
+                    <div class="options-panel-form">
+                    <?php
+                    foreach ($panel_form as $panel_form_control)
+                    {
+                        $value = isset($panel['data'][$panel_form_control['name']]) ? $panel['data'][$panel_form_control['name']] : '';
+                        $this->makeFormControl($panel_form_control, $value);
+                    }
+                    ?>
+                    </div>
+                    <?php
+                    $accordion_body = ob_get_clean();
+                    $accordion_heading = !empty($panel['label']) ? $panel['label'] : $panel['method'];
+                    $accordion->addAccordion($accordion_heading, $accordion_body);
+                }
+                echo $accordion->addClass('options-panels-wrapper');
+            }
+            ?>
+
+            <hr/>
+            <button type="button" class="btn btn-success btn-options-submit">Save</button>
+
+            <?php if ($this->modal == 'thickbox') ThickBox::getFooter(); ?>
+            <?php if ($this->modal == 'bootstrap'): ?></div><?php endif; ?>
+            <?php
             die();
         });
     }
@@ -720,49 +748,174 @@ class Layout extends PluginGeneric
                 break;
 
             case 'generator':
-                $generator_id = $options['generator_id'];
-                $generator = $generator_id::make();
-
-                $after = isset($options['after']) ? $options['after'] : false;
-                if ($after)
-                {
-                    foreach ($after as $afterKey)
-                    {
-                        $afterData = $options['data'][$afterKey];
-                        if (is_numeric($afterData)) $afterData = (boolean) $afterData;
-                        call_user_func_array([$generator, $afterKey], [$afterData]);
-                    }
-                }
-
-                foreach ($options['panels'] as $panel)
-                {
-                    $method = $panel['method'];
-                    $atts = $panel['atts'];
-                    $params = [];
-                    foreach ($atts as $att)
-                        $params[$att] = $panel['data'][$att];
-
-                    call_user_func_array([$generator, $method], $params);
-
-                    $after = isset($panel['after']) ? $panel['after'] : false;
-                    if ($after)
-                    {
-                        foreach ($after as $afterKey)
-                        {
-                            $afterData = $panel['data'][$afterKey];
-                            if (is_numeric($afterData)) $afterData = (boolean) $afterData;
-                            call_user_func_array([$generator, $afterKey], [$afterData]);
-                        }
-                    }
-                }
-
-                return $generator->__toString();
+                return $this->getComponentPreviewGenerator($options);
                 break;
 
             case 'shortcode':
                 return do_shortcode($this->getComponentShortcode($options));
                 break;
         }
+    }
+
+    private function getGeneratorParams($generator_object, $data_object, $method)
+    {
+        $params = [];
+        if (!$method) return $params;
+
+        $atts = isset($generator_object['atts']) ? $generator_object['atts'] : false;
+        if (!$atts) return $params;
+
+//        var_dump($method);
+//        echo "<hr>";
+
+        foreach ($atts as $attKey => $attValues)
+        {
+//            continue;
+//            var_dump($attKey);
+
+            if ($attKey !== $method) continue;
+            foreach ($attValues as $att)
+            {
+                // single value param
+                $param = $data_object['data'][$att];
+
+//                echo "<h3>WTF</h3><pre>";
+//                var_dump($attValues);
+//                echo "</pre>";
+
+                // multiple values param
+                if (is_array($att))
+                {
+                    $param = [];
+                    foreach ($att as $att_k => $att_v)
+                    {
+                        if (!isset($param[$att_k]))
+                            $param[$att_k] = [];
+
+                        foreach ($att_v as $av)
+                        {
+                            $att_data = $data_object['data'][$av];
+                            $param[$att_k][] = $att_data;
+                        }
+
+                        $param[$att_k] = implode(" ", $param[$att_k]);
+                    }
+                    continue;
+                }
+
+                $params[$att] = $param;
+            }
+        }
+
+        return $params;
+    }
+
+    private function parseGeneratorsObject($object, array $generator_output = [], array $generator_log = [])
+    {
+        $generators = isset($object['generators']) ? $object['generators'] : false;
+        if (!$generators) return false;
+
+        foreach ($generators as $g)
+        {
+            $generator_id = $g['generator_id'];
+            $instance = isset($g['instance']) ? $g['instance'] : false;
+            $singleton = isset($g['singleton']) ? (boolean) $g['singleton'] : false;
+
+            if (!$singleton || !isset($generator_log[$generator_id]))
+            {
+                if ($instance)
+                {
+                    $instance_params = $this->getGeneratorParams($g, $object, $instance);
+                    $generator = call_user_func_array([$generator_id, $instance], $instance_params);
+                }
+                else
+                {
+                    $generator = $generator_id::make();
+                }
+                $generator_log[$generator_id] = $generator;
+            }
+            elseif (isset($generator_log[$generator_id]))
+            {
+                $generator = $generator_log[$generator_id];
+            }
+            else continue;
+
+            $before = isset($g['before']) ? $g['before'] : false;
+            if ($before)
+            {
+                foreach ($before as $beforeKey)
+                {
+                    $beforeData = isset($data[$beforeKey]) ? $object['data'][$beforeKey] : true;
+                    if (is_numeric($beforeData)) $beforeData = (boolean) $beforeData;
+                    call_user_func_array([$generator, $beforeKey], [$beforeData]);
+                }
+            }
+
+            $method = isset($g['method']) ? $g['method'] : false;
+            if ($method)
+            {
+                $method_params = $this->getGeneratorParams($g, $object, $g['method']);
+
+//                echo "<pre>";
+//                var_dump($method_params);
+//                echo "</pre>";
+
+                call_user_func_array([$generator, $method], $method_params);
+            }
+
+            $after = isset($g['after']) ? $g['after'] : false;
+            if ($after)
+            {
+                foreach ($after as $afterKey)
+                {
+                    $afterData = isset($object['data'][$afterKey]) ? $object['data'][$afterKey] : false;
+                    if (is_numeric($afterData)) $afterData = (boolean) $afterData;
+                    call_user_func_array([$generator, $afterKey], [$afterData]);
+                }
+            }
+
+            if (!in_array($generator, $generator_output))
+                $generator_output[] = $generator;
+        }
+
+        return count($generator_output) > 0 ? [ 'output' => $generator_output, 'log' => $generator_log ] : false;
+    }
+
+    private function getComponentPreviewGenerator($options)
+    {
+        $generator_log = [];
+        $generator_output = [];
+
+        $generators_root = isset($options['generators']) ? $options : false;
+        $panels = isset($options['panels']) ? $options['panels'] : false;
+
+        if ($generators_root)
+        {
+            $generators_root_output = $this->parseGeneratorsObject($generators_root, $generator_output, $generator_log);
+            if ($generators_root_output !== false)
+            {
+                $generator_output = $generators_root_output['output'];
+                $generator_log = $generators_root_output['log'];
+            }
+        }
+
+        if ($panels)
+        {
+            foreach ($panels as $panel)
+            {
+                $panel_generators = $this->parseGeneratorsObject($panel, $generator_output, $generator_log);
+                if (!$panel_generators)
+                    continue;
+
+                $generator_output = $panel_generators['output'];
+                $generator_log = $panel_generators['log'];
+            }
+        }
+
+        ob_start();
+        foreach ($generator_output as $go) echo $go;
+        $output = ob_get_clean();
+        return $output;
     }
 
     private function getComponentShortcode($options)

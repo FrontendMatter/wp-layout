@@ -1,73 +1,83 @@
 (function ($) {
     "use strict";
 
-    $(function ()
+    $(document).on('init.builder', function(e, builder_instance)
     {
-        var options_form = $('form.options-form'),
-            panels_wrapper = $('.options-panels-wrapper');
+        var container = builder_instance.modal == 'bootstrap' ? builder_instance.modals.options : $('body');
 
-        $('body').on('submit', 'form', function(e)
+        function handle_form_submit()
         {
-            e.preventDefault();
-            handle_save();
-        });
-
-        $('.btn-options-submit').on('click', function(){
-            handle_save();
-        });
-
-        var dup = $('<span></span>').addClass('pull-right fa fa-files-o fa-fw duplicate-panel');
-
-        var panel_selector = '.panel';
-        if (panels_wrapper.is('.panel-group'))
-            panels_wrapper.find('.accordion-toggle').prepend(dup);
-
-        $('body').on('click', '.duplicate-panel', function(e)
-        {
-            e.preventDefault();
-            e.stopPropagation();
-
-            var panel_parent = $(this).closest(panel_selector),
-                panel_parent_clone = panel_parent.clone(false),
-                panel_parent_clone_id = panels_wrapper.find(panel_selector).length + 1;
-
-            panel_parent.after(panel_parent_clone);
-            if (panels_wrapper.is('.panel-group'))
+            container.on('submit', 'form', function(e)
             {
-                panel_parent_clone_id = panel_parent_clone.find('.panel-body').attr('id') + panel_parent_clone_id;
-                panel_parent_clone
-                    .find('.panel-body').attr('id', panel_parent_clone_id)
-                    .end()
-                    .find('[data-toggle]').attr('href', '#' + panel_parent_clone_id)
-                    .trigger('click');
-            }
-        });
+                e.preventDefault();
+                handle_save();
+            });
+
+            container.on('click', '.btn-options-submit', function(){
+                handle_save();
+            });
+        }
+
+        function handle_duplicate()
+        {
+            var dup = $('<span></span>').addClass('pull-right fa fa-files-o fa-fw duplicate-panel'),
+                panels_wrapper = container.find('.options-panels-wrapper');
+
+            var panel_selector = '.panel';
+            if (panels_wrapper.is('.panel-group'))
+                panels_wrapper.find('.accordion-toggle').prepend(dup);
+
+            container.off('click', '.duplicate-panel');
+            container.on('click', '.duplicate-panel', function(e)
+            {
+                e.preventDefault();
+                e.stopPropagation();
+
+                var panel_parent = $(this).parents(panel_selector).first(),
+                    panel_parent_clone = panel_parent.clone(false, false),
+                    panel_parent_clone_id = panels_wrapper.find(panel_selector).length + 1;
+
+                panel_parent.after(panel_parent_clone);
+                if (panels_wrapper.is('.panel-group'))
+                {
+                    panel_parent_clone_id = panel_parent_clone.find('.panel-body').attr('id') + panel_parent_clone_id;
+                    panel_parent_clone
+                        .find('.panel-body').attr('id', panel_parent_clone_id)
+                        .end()
+                        .find('[data-toggle]').attr('href', '#' + panel_parent_clone_id);
+                }
+            });
+        }
 
         function handle_save()
         {
             options_form_save();
             panel_forms_save();
-            parent.tb_remove();
+
+            // force reload after saving
+            builder_instance.scope.page.reload = true;
+            builder_instance.closeOptionsModal();
         }
 
         function options_form_save()
         {
-            var data_raw = parent.builder_instance.deserialize(options_form.serialize()),
+            var options_form = container.find('.options-form'),
+                data_raw = builder_instance.deserialize(options_form.find(':input').serialize()),
                 data_obj = { "data": data_raw },
-                data_save = $.extend({}, parent.builder_instance.getOptions(), data_obj);
+                data_save = $.extend({}, builder_instance.getOptions(), data_obj);
 
-            parent.builder_instance.setOptions(parent.builder_instance.getOverlayAttachment(), data_save);
+            builder_instance.setOptions(builder_instance.getOverlayAttachment(), data_save);
         }
 
         function panel_forms_save()
         {
-            var options = parent.builder_instance.getOptions(),
+            var options = builder_instance.getOptions(),
                 panels = [],
-                panel_forms = $('form.options-panel-form');
+                panel_forms = $('.options-panel-form');
 
             panel_forms.each(function(i, v)
             {
-                var data_raw = parent.builder_instance.deserialize($(v).serialize()),
+                var data_raw = builder_instance.deserialize($(v).find(':input').serialize()),
                     panel_clone = $.extend({}, options.panels[0]);
 
                 panel_clone.data = data_raw;
@@ -75,7 +85,23 @@
             });
 
             options.panels = panels;
-            parent.builder_instance.setOptions(parent.builder_instance.getOverlayAttachment(), options);
+            builder_instance.setOptions(builder_instance.getOverlayAttachment(), options);
+        }
+
+        function init()
+        {
+            handle_form_submit();
+            handle_duplicate();
+        }
+
+        if (builder_instance.modal == 'thickbox')
+            init();
+
+        if (builder_instance.modal == 'bootstrap')
+        {
+            $('body').on('loaded.bs.modal', container.selector, function(){
+                init();
+            });
         }
     });
 

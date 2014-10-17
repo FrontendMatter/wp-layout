@@ -213,40 +213,43 @@ div[class*="col-"] {
   border: 1px dashed @inverseColor !important;
 }
 
-/*
-#builder-menu-bottom {
-  background: @inverseColor;
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 30px;
-  #builder-breadcrumb {
-    -webkit-box-shadow: none;
-    -moz-box-shadow: none;
-    box-shadow: none;
-    border-bottom: none;
-    margin: 0;
-    height: 30px;
-    line-height: 30px;
-    display: inline-block;
-    &, * { color: #fff; text-shadow: none; }
-    li {
-      height: 30px;
-      line-height: 30px;
-      &.divider {
-        border-right: none;
-        border-left: 1px solid #2c2c2c;
-      }
-    }
-    a { cursor: pointer; }
+.component {
+  .nav-tabs {
+    margin-bottom: 0;
   }
-  .btn-group-xs {
-    float: right;
-    margin: 4px 5px 0 0;
+  .nav-tabs + .tab-content {
+    padding: 15px;
+    background: #fff;
   }
 }
-*/
+
+#Modal_builderOptions {
+  .modal-content {
+    padding: 15px;
+  }
+}
+
+.opacity(@opacity) {
+  opacity: @opacity;
+  // IE8 filter
+  @opacity-ie: (@opacity * 100);
+  filter: ~"alpha(opacity=@{opacity-ie})";
+}
+
+body.modal-open {
+  .modal-backdrop {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 100000;
+    background-color: #fff;
+    // Fade for backdrop
+    &.fade { .opacity(0); }
+    &.in { .opacity(0.9); }
+  }
+}
 
 #builder-editor {
   .CodeMirror {

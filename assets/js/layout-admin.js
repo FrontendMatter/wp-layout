@@ -7,7 +7,8 @@
             return;
 
         window.builder_instance = new builder({
-            document: '#mp-layout-builder'
+            "document": "#mp-layout-builder",
+            "modal": "bootstrap"
         });
 
     });
